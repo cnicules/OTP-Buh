@@ -1,0 +1,148 @@
+<project name="btp-osm" default="build" basedir=".">
+  <!-- This file is imported by build.xml. -->
+
+  <!-- directories -->
+  <property name="src.dir" value="${basedir}/src/main/osm"/>
+  <property name="src.add.osm" value="${src.dir}/bucharest-additions.osm"/>
+
+  <property name="osm.build.dir" value="${build.dir}/osm"/>
+  <property name="osm.dl.dir" value="${dl.dir}/osm"/>
+
+  <!-- urls -->
+  <property name="osm.api.url"
+    value="http://api.openstreetmap.org/api/0.6/map"/>
+  <property name="lat0" value="44.33"/>
+  <property name="lat1" value="44.40"/>
+  <property name="lat2" value="44.47"/>
+  <property name="lat3" value="44.61"/>
+  <property name="lon0" value="25.95"/>
+  <property name="lon1" value="26.05"/>
+  <property name="lon2" value="26.15"/>
+  <property name="lon3" value="26.25"/>
+
+  <!-- osmosis.home.dir defined by build.properties -->
+
+  <!--
+     *    OpenStreetMap OSM files
+   -->
+  <property name="center.osm"
+     value="${osm.dl.dir}/map_lat+${lat1}_+${lat2}_lon+${lon1}_+${lon2}.osm"/>
+  <property name="SW-S-SE.osm"
+     value="${osm.dl.dir}/map_lat+${lat0}_+${lat1}_lon+${lon0}_+${lon3}.osm"/>
+  <property name="W-NW.osm"
+     value="${osm.dl.dir}/map_lat+${lat1}_+${lat3}_lon+${lon0}_+${lon1}.osm"/>
+  <property name="N.osm"
+     value="${osm.dl.dir}/map_lat+${lat2}_+${lat3}_lon+${lon1}_+${lon2}.osm"/>
+  <property name="E-NE.osm"
+     value="${osm.dl.dir}/map_lat+${lat1}_+${lat3}_lon+${lon1}_+${lon2}.osm"/>
+
+  <target name="osm-download-bucharest"
+    description="Get any missing region osms from OpenStreetMap.org">
+    
+    <outofdate>
+      <targetfiles>
+        <pathelement path="${center.osm}"/>
+        <pathelement path="${SW-S-SE.osm}"/>
+        <pathelement path="${W-NW.osm}"/>
+        <pathelement path="${N.osm}"/>
+        <pathelement path="${E-NE.osm}"/>
+      </targetfiles>
+      <sourcefiles/>
+      <sequential>
+        <mkdir dir="${osm.dl.dir}"/>
+
+        <!-- middle is densest, largest, most likely to fail: do it first -->
+        <get src="${osm.api.url}?bbox=${lon1},${lat1},${lon2},${lat2}"
+             dest="${center.osm}" skipexisting="true" verbose="on"/>
+
+        <get src="${osm.api.url}?bbox=${lon0},${lat0},${lon3},${lat1}"
+             dest="${SW-S-SE.osm}" skipexisting="true" verbose="on"/>
+
+        <get src="${osm.api.url}?bbox=${lon0},${lat1},${lon1},${lat3}"
+             dest="${W-NW.osm}" skipexisting="true" verbose="on"/>
+        <get src="${osm.api.url}?bbox=${lon1},${lat2},${lon2},${lat3}"
+             dest="${N.osm}" skipexisting="true" verbose="on"/>
+        <get src="${osm.api.url}?bbox=${lon2},${lat1},${lon3},${lat3}"
+             dest="${E-NE.osm}" skipexisting="true" verbose="on"/>
+      </sequential>
+    </outofdate>
+  </target>
+
+  <target name="osm-remove-center"
+    description="Remove central Bucharest map to force download">
+    <delete file="${center.osm}" quiet="true"/>
+  </target>
+  <target name="osm-remove-s"
+    description="Remove SW,S,SE Bucharest map to force download">
+    <delete file="${SW-S-SE.osm}" quiet="true"/>
+  </target>
+  <target name="osm-remove-w-nw"
+    description="Remove W,NW Bucharest map to force download">
+    <delete file="${W-NW.osm}" quiet="true"/>
+  </target>
+  <target name="osm-remove-n"
+    description="Remove N. Bucharest map to force download">
+    <delete file="${N.osm}" quiet="true"/>
+  </target>
+  <target name="osm-remove-e-ne"
+    description="Remove E,NE Bucharest map to force download">
+    <delete file="${E-NE.osm}" quiet="true"/>
+  </target>
+  <target name="osm-remove-all"
+    depends="osm-remove-center,osm-remove-s,osm-remove-w-nw,osm-remove-n,osm-remove-e-ne"
+    description="Remove all downloaded maps to force new downloads">
+  </target>
+  
+  <target name="osm-merge"
+    description="Merge region osms and additions into bucharest.osm"
+    depends="check-build.properties,osm-download-bucharest">
+
+    <property name="build.bucharest.osm"
+      value="${osm.build.dir}/bucharest.osm"/>
+    <outofdate>
+      <targetfiles path="${build.bucharest.osm}"/>
+      <sourcefiles>
+        <pathelement path="${center.osm}"/>
+        <pathelement path="${SW-S-SE.osm}"/>
+        <pathelement path="${W-NW.osm}"/>
+        <pathelement path="${N.osm}"/>
+        <pathelement path="${E-NE.osm}"/>
+      </sourcefiles>
+      <sequential>
+        <mkdir dir="${osm.build.dir}"/>
+
+        <java classname="org.codehaus.classworlds.Launcher"
+          fork="true" inputstring="" failonerror="true">
+          <classpath>
+            <fileset dir="${osmosis.home.dir}/lib/default/">
+              <include name="plexus-classworlds-*.jar"/>
+            </fileset>
+          </classpath>
+          <sysproperty key="app.home" value="${osmosis.home.dir}"/>
+          <sysproperty key="classworlds.conf"
+            value="${osmosis.home.dir}/config/plexus.conf"/>
+
+          <arg value="--rx"/> <arg file="${center.osm}"/> <arg value="--sort"/>
+          <arg value="--rx"/> <arg file="${SW-S-SE.osm}"/> <arg value="--sort"/>
+          <arg value="--merge"/>
+          <arg value="--rx"/> <arg file="${W-NW.osm}"/><arg value="--sort"/>
+          <arg value="--rx"/> <arg file="${E-NE.osm}"/><arg value="--sort"/>
+          <arg value="--merge"/>
+          <arg value="--merge"/>
+          <arg value="--rx"/> <arg file="${N.osm}"/><arg value="--sort"/>
+          <arg value="--rx"/> <arg file="${src.add.osm}"/><arg value="--sort"/>
+          <arg value="--merge"/>
+          <arg value="--merge"/>
+          <arg value="--wx"/> <arg file="${build.bucharest.osm}"/>
+        </java>
+        <echo>${build.bucharest.osm}</echo>
+      </sequential>
+    </outofdate>
+  </target>
+
+  <target name="osm-clean"
+    description="remove generated osm files (not downloaded files)">
+    <delete dir="${osm.build.dir}" quiet="true"/>
+  </target>
+
+</project>

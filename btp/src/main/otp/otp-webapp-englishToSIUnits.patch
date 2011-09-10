@@ -1,0 +1,26 @@
+--- opentripplanner-webapp/index.html
++++ opentripplanner-webapp/index.html
+@@ -78,6 +78,23 @@
+     <script src="js/otp/application/Attribution.js"></script>
+     <script src="js/otp/application/Controller.js"></script>
+     <script src="js/otp/config.js"></script>
++    <script>
++(function() {
++  // convert English locale to SI units
++  otp.locale.English.config.metricsSystem = null;
++  otp.locale.English.tripPlanner.maxWalkDistance = [
++     ['250',    '250 meters'],
++     ['500',    '500 meters'],
++     ['1000',   '1 km'],
++     ['2000',   '2 km'],
++     ['3000',   '3 km'],
++     ['5000',   '5 km'],
++     ['8000',   '8 km'],
++     ['10000',  '10 km'],
++     ['20000',  '20 km']
++    ];
++}());
++</script>
+ </head>
+ 
+ <body>

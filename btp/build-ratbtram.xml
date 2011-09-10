@@ -1,0 +1,640 @@
+<project name="btp-ratb" default="build" basedir=".">
+  <!-- This file is imported by build.xml. -->
+
+  <!-- directories -->
+  <property name="dl.ratb.dir" value="${dl.dir}/ratb"/>
+  <property name="ratbtram.build.dir" value="${build.dir}/ratbtram"/>
+  <property name="ratbtram.gtfs.dir" value="${ratbtram.build.dir}/gtfs"/>
+
+  <!-- result -->
+  <property name="gtfs-ratbtram.zip" value="${target.dir}/gtfs-ratbtram.zip"/>
+
+  <!-- urls -->
+  <property name="RATBTramListURL"
+    value="http://www.ratb.ro/v_tramvai.php"/>
+
+  <!--
+     *   RATB files
+   -->
+
+  <property name="RATBTramList.html"
+    value="${dl.ratb.dir}/RATB-tram-list.html"/>
+
+  <target name="ratbtram-download-list"
+    description="Download tram line numbers from RATB.ro, if missing">
+
+    <outofdate>
+      <targetfiles path="${RATBTramList.html}"/>
+      <sourcefiles/>
+      <sequential>
+        <!-- Don't bother RATB site with frequent downloads.
+             Download only if missing (removed). -->
+        <get src="${RATBTramListURL}" dest="${RATBTramList.html}"
+             skipexisting="true" />
+      </sequential>
+    </outofdate>
+  </target>    
+  <target name="ratbtram-remove-list"
+    description="Remove RATB tram list to force new download">
+    <delete file="${RATBTramList.html"/>
+  </target>
+
+  <target name="ratbtram-extract-list" depends="ratbtram-download-list">
+
+    <property name="tram-numbers.txt"
+      value="${ratbtram.build.dir}/tram-numbers.txt"/>
+    <outofdate>
+      <targetfiles path="${tram-numbers.txt}"/>
+      <sourcefiles>
+        <pathelement path="${RATBTramList.html}"/>
+        <pathelement path="${basedir}/build-ratbtram.xml"/>
+      </sourcefiles>
+      <sequential>
+        <local name="html-file"/>
+        <loadfile property="html-file" srcFile="${RATBTramList.html}"/>
+        <fail unless="html-file" message="No ${RATBTramList.html}"/>
+
+        <!-- the list of tram-line numbers is in a 1-line <select name="tlin1"> -->
+        <local name="select-line"/>
+        <propertyregex property="select-line" input="${html-file}"
+          regexp="&lt;select name=&quot;tlin1&quot;[^&gt;]*&gt;(.*)&lt;/select&gt;"
+          select="\1"/>
+        <fail unless="select-line"
+          message="No &lt;select name=&quot;tlin1&quot;&gt;"/>
+
+        <!-- trim option 0 -->
+        <local name="option-line"/>
+        <propertyregex property="options-line" input="${select-line}"
+          regexp="&lt;option[^&gt;]*&gt;\D+&lt;/option&gt;" replace=""/>
+
+        <!-- remove all but tram numbers separated by spaces -->
+        <local name="tram-numbers"/>
+        <propertyregex property="tram-numbers" input="${options-line}"
+          regexp="&lt;option[^&gt;]*&gt;(\d+)[&lt;]/option[&gt;]"
+          replace="\1 " global="true"/>
+        <fail unless="tram-numbers"
+          message="Unmatched option (nonnumeric?) in list: ${options-line}"/>
+
+        <!-- fail if matched but no tram numbers (should not happen) -->
+        <local name="isEmpty"/>
+        <condition property="isEmpty">
+          <length string="${tram-numbers}" trim="true" when="eq" length="0"/>
+        </condition>    
+        <fail if="isEmpty" message="No tram numbers found"/>
+
+        <echo file="${ratbtram.build.dir}/tram-numbers.txt">${tram-numbers}</echo>
+
+        <!-- create a backup copy of latest good input file -->
+        <copy file="${RATBTramList.html}"
+          tofile="${RATBTramList.html}.good" preservelastmodified="true"/>
+
+        <echo>${tram-numbers}</echo>
+      </sequential>
+    </outofdate>
+    <loadfile property="tram-numbers" srcFile="${tram-numbers.txt}"/>    
+  </target>
+
+  <target name="ratbtram-download-freqs" depends="ratbtram-extract-list"
+    description="Download tram line pages from RATB.ro, if missing">
+
+    <!-- Avoid bothering RATB site with frequent/burst downloads.
+         Otherwise they may discourage robots and make extracting data hard. -->
+    <for param="tramNum" list="${tram-numbers}" trim="true" delimiter=" ">
+      <sequential>
+        <local name="tramFile"/>
+        <property name="tramFile"
+          value="${dl.ratb.dir}/RATB-tram-@{tramNum}.html"/>
+        <outofdate>
+          <targetfiles path="${tramFile}"/>
+          <sourcefiles/>
+          <sequential>
+	    <!-- POST to same URL used to GET tram list, with "tlin" param -->
+            <local name="statusCode"/>
+            <postMethod url="${RATBTramListURL}" responseDataFile="${tramFile}"
+              statusCodeProperty="statusCode">
+              <parameter name="tlin1" value="@{tramNum}"/>
+            </postMethod>
+            <if><equals arg1="${statusCode}" arg2="200"/>
+              <then><echo>Downloaded: ${tramFile}</echo></then>
+              <else><echo>Error ${statusCode} for tram ${tramNum}</echo></else>
+            </if>
+            <sleep seconds="17"/>
+          </sequential>
+        </outofdate>
+      </sequential>
+    </for>
+  </target>
+  <target name="ratbtram-remove-freqs"
+    description="Remove downloaded RATB tram list and tram pages">
+    <delete file="${RATBTramList.html}"/>
+    <delete>
+      <fileset dir="${dl.ratb.dir}" includes="ratbtram-*.html"/>
+    </delete>
+  </target>
+
+  <target name="ratbtram-extract-freqs-and-stopseqs"
+    depends="ratbtram-download-freqs,ratbtram-extract-list,compile-java">
+
+    <local name="in.dir"/>
+    <property name="in.dir" value="${ratbtram.build.dir}"/>
+    <local name="out.dir"/>
+    <property name="out.dir" value="${ratbtram.build.dir}/html"/>
+    <property name="ratbtram-freq-inputs.xml"
+      value="${out.dir}/ratbtram-frequency-inputs.xml"/>
+    <property name="ratbtram-stopseq-inputs.xml"
+      value="${out.dir}/ratbtram-stopseq-inputs.xml"/>
+
+    <outofdate>
+      <targetfiles>
+        <pathelement path="${ratbtram-freq-inputs.xml}"/>
+        <pathelement path="${ratbtram-stopseq-inputs.xml}"/>
+      </targetfiles>
+      <sourcefiles>
+        <fileset dir="${dl.ratb.dir}" includes="ratbtram-*.html"/>
+        <pathelement path="${basedir}/build-ratbtram.xml"/>
+      </sourcefiles>
+      <sequential>
+        <mkdir dir="${out.dir}"/>
+        <echo file="${ratbtram-freq-inputs.xml}"
+          >&lt;frequency-inputs dir=&quot;${out.dir}&quot;&gt;&#xA;</echo>
+        <echo file="${ratbtram-stopseq-inputs.xml}"
+          >&lt;stop-sequence-inputs dir=&quot;${out.dir}&quot;&gt;&#xA;</echo>
+
+        <for param="tramNum" list="${tram-numbers}" trim="true" delimiter=" ">
+          <sequential>
+            <local name="zTramNum"/>
+            <if><length string="@{tramNum}" when="eq" length="1"/>
+              <then><property name="zTramNum" value="0@{tramNum}"/></then>
+              <else><property name="zTramNum" value="@{tramNum}"/></else>
+            </if>          
+            <local name="inPath"/>
+            <property name="inPath"
+              value="${dl.ratb.dir}/RATB-tram-@{tramNum}.html"/>
+            <sequential>
+              <local name="outFreqName"/>
+              <property name="outFreqName"
+                value="ratbtram-${zTramNum}-freq.html"/>
+              <local name="outFreqPath"/>
+              <property name="outFreqPath" value="${out.dir}/${outFreqName}"/>
+              <outofdate>
+                <targetfiles path="${outFreqPath}"/>
+                <sourcefiles>
+                  <pathelement path="${inPath}"/>
+                  <pathelement
+                   path="${build.dir}/classes/ExtractElementWithString.class"/>
+                </sourcefiles>
+                <sequential>
+                  <java classname="ExtractElementWithString"
+                    classpath="${build.dir}/classes"
+                    inputstring="" failonerror="true">
+                    <arg value="${inPath}"/><arg value="${outFreqPath}"/>
+                    <arg value="&lt;table"/>
+                    <arg value="Lucru"/>
+                    <arg value="&lt;/table&gt;"/>
+                  </java>
+                </sequential>
+              </outofdate>
+              <if><available file="${inPath}"/>
+                <then>
+                  <echo file="${ratbtram-freq-inputs.xml}" append="true"
+                   > &lt;filename&gt;${outFreqName}&lt;/filename&gt;&#xA;</echo>
+                </then>
+              </if>
+            </sequential>
+
+            <sequential>
+              <local name="outStopSeqName"/>
+              <property name="outStopSeqName"
+                value="ratbtram-${zTramNum}-stopSeq.html"/>
+              <local name="outStopSeqPath"/>
+              <property name="outStopSeqPath"
+                value="${out.dir}/${outStopSeqName}"/>
+              <outofdate>
+                <targetfiles path="${outStopSeqPath}"/>
+                <sourcefiles>
+                  <pathelement path="${inPath}"/>
+                  <pathelement
+                   path="${build.dir}/classes/ExtractElementWithString.class"/>
+                </sourcefiles>
+                <sequential>
+                  <java classname="ExtractElementWithString"
+                    classpath="${build.dir}/classes"
+                    inputstring="" failonerror="true">
+                    <arg value="${inPath}"/><arg value="${outStopSeqPath}"/>
+                    <arg value="&lt;table"/>
+                    <arg value="Nume Statie"/>
+                    <arg value="&lt;/table&gt;"/>
+                  </java>
+                </sequential>
+              </outofdate>
+              <if><available file="${inPath}"/>
+                <then>
+                  <echo file="${ratbtram-stopseq-inputs.xml}" append="true"
+                  > &lt;filename&gt;${outStopSeqName}&lt;/filename&gt;&#xA;</echo>
+                </then> 
+              </if>
+            </sequential>
+
+          </sequential>
+        </for>
+
+        <echo file="${ratbtram-freq-inputs.xml}"
+          append="true">&lt;/frequency-inputs&gt;&#xA;</echo>
+        <echo file="${ratbtram-stopseq-inputs.xml}"
+          append="true">&lt;/stop-sequence-inputs&gt;&#xA;</echo>
+      </sequential>
+    </outofdate>
+  </target>
+
+  <target name="ratbtram-parse-stopseqs"
+    depends="ratbtram-extract-freqs-and-stopseqs">
+
+    <property name="ratbtram-stopseqs.xml"
+      value="${ratbtram.build.dir}/ratbtram-stopsequences.xml"/>
+    <sequential>
+      <local name="ratbtram-parse-stopseqs.xslt"/>
+      <property name="ratbtram-parse-stopseqs.xslt"
+        value="${basedir}/src/main/xslt/ratbtram-parse-stopseqs.xslt"/>
+
+      <outofdate>
+        <targetfiles path="${ratbtram-stopseqs.xml}"/>
+        <sourcefiles>
+          <pathelement path="${ratbtram-stopseq-inputs.xml}"/>
+          <pathelement path="${ratbtram-parse-stopseqs.xslt}"/>
+          <pathelement path="${basedir}/build-ratbtram.xml"/>
+        </sourcefiles>
+        <sequential>
+          <xslt in="${ratbtram-stopseq-inputs.xml}"
+            out="${ratbtram-stopseqs.xml}"
+            style="${ratbtram-parse-stopseqs.xslt}"/>
+          <echo>${ratbtram-stopseqs.xml}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+  </target>
+
+  <target name="ratbtram-parse-freqs"
+    depends="ratbtram-extract-freqs-and-stopseqs,ratbtram-parse-stopseqs">
+
+    <property name="ratbtram-freqs.xml"
+      value="${ratbtram.build.dir}/ratbtram-frequencies.xml"/>
+    <sequential>
+      <local name="ratbtram-parse-freqs.xslt"/>
+      <property name="ratbtram-parse-freqs.xslt"
+        value="${basedir}/src/main/xslt/ratbtram-parse-frequencies.xslt"/>
+
+      <outofdate>
+        <targetfiles path="${ratbtram-freqs.xml}"/>
+        <sourcefiles>
+          <pathelement path="${ratbtram-freq-inputs.xml}"/>
+          <pathelement path="${ratbtram-parse-freqs.xslt}"/>
+          <pathelement path="${basedir}/build-ratbtram.xml"/>
+        </sourcefiles>
+        <sequential>
+          <xslt in="${ratbtram-freq-inputs.xml}" out="${ratbtram-freqs.xml}"
+            style="${ratbtram-parse-freqs.xslt}">
+            <param name="stopSeqsXml" expression="${ratbtram-stopseqs.xml}"/>
+          </xslt>
+          <echo>${ratbtram-freqs.xml}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+  </target>
+
+  <target name="ratbtram-routes" depends="osm-merge,ratbtram-parse-stopseqs">
+
+    <property name="ratbtram-routes.xml"
+      value="${ratbtram.build.dir}/ratbtram-routes.xml"/>
+    <sequential>
+      <local name="ratbtram-osmToRoutesXml.xslt"/>
+      <property name="ratbtram-osmToRoutesXml.xslt"
+        value="${basedir}/src/main/xslt/ratbtram-osmToRoutesXml.xslt"/>
+
+      <mkdir dir="${ratbtram.build.dir}"/>
+
+      <outofdate>
+        <targetfiles path="${ratbtram-routes.xml}"/>
+        <sourcefiles>
+          <pathelement path="${build.bucharest.osm}"/>
+          <pathelement path="${ratbtram-stopseqs.xml}"/>
+          <pathelement path="${ratbtram-osmToRoutesXml.xslt}"/>
+          <pathelement path="${basedir}/build-ratbtram.xml"/>
+        </sourcefiles>
+        <sequential>
+          <xslt in="${build.bucharest.osm}" out="${ratbtram-routes.xml}"
+            style="${ratbtram-osmToRoutesXml.xslt}">
+            <param name="stopSeqsXml" expression="${ratbtram-stopseqs.xml}"/>
+          </xslt>          
+          <echo>${ratbtram-routes.xml}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+
+    <property name="ratbtram.routes.txt"
+      value="${ratbtram.gtfs.dir}/routes.txt"/>
+    <sequential>
+      <local name="routes-xmlToGtfsTxt.xslt"/>
+      <property name="routes-xmlToGtfsTxt.xslt"
+        value="${basedir}/src/main/xslt/routes-xmlToGtfsTxt.xslt"/>
+
+      <mkdir dir="${ratbtram.gtfs.dir}"/>
+
+      <outofdate>
+        <targetfiles path="${ratbtram.routes.txt}"/>
+        <sourcefiles>
+          <pathelement path="${ratbtram-routes.xml}"/>
+          <pathelement path="${routes-xmlToGtfsTxt.xslt}"/>
+          <pathelement path="${basedir}/build-ratbtram.xml"/>
+        </sourcefiles>
+        <sequential>
+          <xslt in="${ratbtram-routes.xml}" out="${ratbtram.routes.txt}"
+            style="${routes-xmlToGtfsTxt.xslt}"/>
+          <echo>${ratbtram.routes.txt}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+  </target>
+
+  <target name="ratbtram-trips"
+    depends="ratbtram-parse-freqs,ratbtram-routes">
+
+    <property name="ratbtram-trips.xml"
+      value="${ratbtram.build.dir}/ratbtram-trips.xml"/>
+    <sequential>
+      <local name="freqs-to-trips.xslt"/>
+      <property name="freqs-to-trips.xslt"
+        value="${basedir}/src/main/xslt/freqs-to-trips.xslt"/>
+
+      <outofdate>
+        <targetfiles path="${ratbtram-trips.xml}"/>
+        <sourcefiles>
+          <pathelement path="${ratbtram-freqs.xml}"/>
+          <pathelement path="${freqs-to-trips.xslt}"/>
+          <pathelement path="${basedir}/build-ratbtram.xml"/>
+        </sourcefiles>
+        <sequential>
+          <xslt in="${ratbtram-freqs.xml}" out="${ratbtram-trips.xml}"
+            style="${freqs-to-trips.xslt}">
+            <param name="routesXml" expression="${ratbtram-routes.xml}"/>
+          </xslt>
+          <echo>${ratbtram-trips.xml}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+
+    <property name="ratbtram.trips.txt"
+      value="${ratbtram.gtfs.dir}/trips.txt"/>
+    <sequential>
+      <local name="trips-xmlToGtfsTxt.xslt"/>
+      <property name="trips-xmlToGtfsTxt.xslt"
+        value="${basedir}/src/main/xslt/trips-xmlToGtfsTxt.xslt"/>
+      <mkdir dir="${ratbtram.gtfs.dir}"/>
+
+      <outofdate>
+        <targetfiles path="${ratbtram.trips.txt}"/>
+        <sourcefiles>
+          <pathelement path="${ratbtram-trips.xml}"/>
+          <pathelement path="${trips-xmlToGtfsTxt.xslt}"/>
+          <pathelement path="${basedir}/build-ratbtram.xml"/>
+        </sourcefiles>
+        <sequential>
+          <xslt in="${ratbtram-trips.xml}" out="${ratbtram.trips.txt}"
+            style="${trips-xmlToGtfsTxt.xslt}"/>
+          <echo>${ratbtram.trips.txt}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+
+  </target>
+
+  <target name="ratbtram-frequencies"
+    depends="ratbtram-parse-freqs,ratbtram-trips">
+    <property name="ratbtram.frequencies.txt"
+      value="${ratbtram.gtfs.dir}/frequencies.txt"/>
+    <sequential>
+      <local name="freqs-xmlToGtfsTxt.xslt"/>
+      <property name="freqs-xmlToGtfsTxt.xslt"
+        value="${basedir}/src/main/xslt/freqs-xmlToGtfsTxt.xslt"/>
+      <outofdate>
+        <targetfiles path="${ratbtram.frequencies.txt}"/>
+        <sourcefiles>
+          <pathelement path="${ratbtram-freqs.xml}"/>
+          <pathelement path="${ratbtram-trips.xml}"/>
+          <pathelement path="${freqs-xmlToGtfsTxt.xslt}"/>
+          <pathelement path="${basedir}/build-ratbtram.xml"/>
+        </sourcefiles>
+        <sequential>
+          <mkdir dir="${ratbtram.gtfs.dir}"/>
+          <xslt in="${ratbtram-freqs.xml}" out="${ratbtram.frequencies.txt}"
+            style="${freqs-xmlToGtfsTxt.xslt}">
+            <param name="tripsXml" expression="${ratbtram-trips.xml}"/>
+          </xslt>
+          <echo>${ratbtram.frequencies.txt}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+  </target>
+
+  <target name="ratbtram-stops" depends="osm-merge">
+    <property name="ratbtram-route-stops.xml"
+      value="${ratbtram.build.dir}/ratbtram-route-stops.xml"/>
+    <sequential>
+      <local name="osmTram-to-xmlRouteStops.xslt"/>
+      <property name="osmTram-to-xmlRouteStops.xslt"
+        value="${basedir}/src/main/xslt/osmTram-to-xmlRouteStops.xslt"/>
+      <outofdate>
+        <targetfiles path="${ratbtram-route-stops.xml}"/>
+        <sourcefiles>
+          <pathelement path="${build.bucharest.osm}"/>
+          <pathelement path="${osmTram-to-xmlRouteStops.xslt}"/>
+        </sourcefiles>
+        <sequential>
+          <mkdir dir="${ratbtram.build.dir}"/>
+          <xslt in="${build.bucharest.osm}" out="${ratbtram-route-stops.xml}"
+            style="${osmTram-to-xmlRouteStops.xslt}"/>
+          <echo>${ratbtram-route-stops.xml}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+
+    <property name="ratbtram-stops.xml"
+      value="${ratbtram.build.dir}/ratbtram-stops.xml"/>
+    <sequential>
+      <local name="routeStops-to-stops.xslt"/>
+      <property name="routeStops-to-stops.xslt"
+        value="${basedir}/src/main/xslt/routeStops-to-stops.xslt"/>
+      <outofdate>
+        <targetfiles path="${ratbtram-stops.xml}"/>
+        <sourcefiles>
+          <pathelement path="${ratbtram-route-stops.xml}"/>
+          <pathelement path="${routeStops-to-stops.xslt}"/>
+        </sourcefiles>
+        <sequential>
+          <xslt in="${ratbtram-route-stops.xml}" out="${ratbtram-stops.xml}"
+            style="${routeStops-to-stops.xslt}"/>
+          <echo>${ratbtram-stops.xml}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+
+    <property name="ratbtram-stops-sans-ro-diacritics.xml"
+      value="${ratbtram.build.dir}/ratbtram-stops-sans-ro-diacritics.xml"/>
+    <sequential>
+      <local name="stops-removeRomanianDiacritics.xslt"/>
+      <property name="stops-removeRomanianDiacritics.xslt"
+        value="${basedir}/src/main/xslt/stops-removeRomanianDiacritics.xslt"/>
+      <outofdate>
+        <targetfiles path="${ratbtram-stops-sans-ro-diacritics.xml}"/>
+        <sourcefiles>
+          <pathelement path="${ratbtram-stops.xml}"/>
+          <pathelement path="${stops-removeRomanianDiacritics.xslt}"/>
+        </sourcefiles>
+        <sequential>
+          <xslt in="${ratbtram-stops.xml}"
+            out="${ratbtram-stops-sans-ro-diacritics.xml}"
+            style="${stops-removeRomanianDiacritics.xslt}"/>
+          <echo>${ratbtram-stops-sans-ro-diacritics.xml}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+
+    <property name="ratbtram.stops.txt"
+      value="${ratbtram.gtfs.dir}/stops.txt" />
+    <sequential>
+      <local name="stops-xmlToGtfsTxt.xslt"/>
+      <property name="stops-xmlToGtfsTxt.xslt"
+        value="${basedir}/src/main/xslt/stops-xmlToGtfsTxt.xslt"/>
+      <outofdate>
+        <targetfiles path="${ratbtram.stops.txt}"/>
+        <sourcefiles>
+          <pathelement path="${ratbtram-stops.xml}"/>
+          <pathelement path="${stops-xmlToGtfsTxt.xslt}"/>
+        </sourcefiles>
+        <sequential>
+          <xslt in="${ratbtram-stops.xml}" out="${ratbtram.stops.txt}"
+            style="${stops-xmlToGtfsTxt.xslt}"/>
+          <echo>${ratbtram.stops.txt}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+
+  </target>
+
+  <target name="ratbtram-stop_times"
+    depends="ratbtram-trips,ratbtram-parse-stopseqs,ratbtram-stops,compile-java">
+    <property name="ratbtram-stop-times.xml"
+      value="${ratbtram.build.dir}/ratbtram-stop-times.xml"/>
+    <sequential>
+      <local name="ratbtram-stop-times.log"/>
+      <property name="ratbtram-stop-times.log"
+        value="${ratbtram.build.dir}/ratbtram-stop-times.log"/>
+      <outofdate>
+        <targetfiles path="${ratbtram-stop-times.xml}"/>
+        <sourcefiles>
+          <pathelement path="${ratbtram-trips.xml}"/>
+          <pathelement path="${ratbtram-stopseqs.xml}"/>
+          <pathelement path="${ratbtram-route-stops.xml}"/>
+          <pathelement path="${ratbtram-stops-sans-ro-diacritics.xml}"/>
+          <pathelement path="${build.dir}/classes/GenerateStopTimesWithConstantInterval.class"/>
+          <pathelement path="${build.dir}/classes/Duration.class"/>
+          <pathelement path="${build.dir}/classes/Stop.class"/>
+          <pathelement path="${basedir}/src/main/java/logging.properties"/>
+        </sourcefiles>
+        <sequential>
+          <java classname="GenerateStopTimesWithConstantInterval"
+            classpath="${build.dir}/classes"
+            fork="true" inputstring="" failonerror="true">
+            <jvmarg value="-enableassertions"/>
+            <sysproperty key="java.util.logging.config.file"
+              value="${basedir}/src/main/java/logging.properties"/>
+            <arg value="ro"/>
+            <arg value="${ratbtram-trips.xml}"/>
+            <arg value="${ratbtram-stopseqs.xml}"/>
+            <arg value="${ratbtram-route-stops.xml}"/>
+            <arg value="${ratbtram-stops-sans-ro-diacritics.xml}"/>
+            <arg value="00:00:20"/>
+            <arg value="00:02:40"/>
+            <arg value="${ratbtram-stop-times.xml}"/>
+            <arg value="${ratbtram-stop-times.log}"/>
+          </java>
+          <echo>${ratbtram-stop-times.xml}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+
+    <property name="ratbtram.stop_times.txt"
+      value="${ratbtram.gtfs.dir}/stop_times.txt"/>
+    <sequential>
+      <local name="stoptimes-xmlToGtfsTxt.xslt"/>
+      <property name="stoptimes-xmlToGtfsTxt.xslt"
+        value="${basedir}/src/main/xslt/stoptimes-xmlToGtfsTxt.xslt"/>
+      <outofdate>
+        <targetfiles path="${ratbtram.stop_times.txt}"/>
+        <sourcefiles>
+          <pathelement path="${ratbtram-stop-times.xml}"/>
+          <pathelement path="${stoptimes-xmlToGtfsTxt.xslt}"/>
+        </sourcefiles>
+        <sequential>
+          <xslt in="${ratbtram-stop-times.xml}" out="${ratbtram.stop_times.txt}"
+            style="${stoptimes-xmlToGtfsTxt.xslt}"/>
+          <echo>${ratbtram.stop_times.txt}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+  </target>
+
+  <target name="ratbtram-agency">
+    <copy file="${basedir}/src/main/txt/agency.txt"
+      todir="${ratbtram.gtfs.dir}"/>
+  </target>
+
+  <target name="ratbtram-calendar">
+    <copy file="${basedir}/src/main/txt/ratb-calendar.txt"
+      tofile="${ratbtram.gtfs.dir}/calendar.txt"/>
+  </target>
+
+  <target name="ratbtram-calendar_dates">
+    <copy file="${basedir}/src/main/txt/ratb-calendar_dates.txt"
+      tofile="${ratbtram.gtfs.dir}/calendar_dates.txt"/>
+  </target>
+
+  <target name="ratbtram-gtfs"
+    depends="ratbtram-agency,ratbtram-calendar,ratbtram-calendar_dates,ratbtram-routes,ratbtram-trips,ratbtram-frequencies,ratbtram-stops,ratbtram-stop_times">
+    <outofdate>
+      <targetfiles path="${gtfs-ratbtram.zip}"/>
+      <sourcefiles>
+        <pathelement path="${ratbtram.gtfs.dir}/agency.txt"/>
+        <pathelement path="${ratbtram.gtfs.dir}/calendar.txt"/>
+        <pathelement path="${ratbtram.gtfs.dir}/calendar_dates.txt"/>
+        <pathelement path="${ratbtram.gtfs.dir}/routes.txt"/>
+        <pathelement path="${ratbtram.gtfs.dir}/trips.txt"/>
+        <pathelement path="${ratbtram.gtfs.dir}/frequencies.txt"/>
+        <pathelement path="${ratbtram.gtfs.dir}/stops.txt"/>
+        <pathelement path="${ratbtram.gtfs.dir}/stop_times.txt"/>
+      </sourcefiles>
+      <sequential>
+        <zip basedir="${ratbtram.gtfs.dir}" destfile="${gtfs-ratbtram.zip}">
+          <fileset dir="${ratbtram.gtfs.dir}">
+            <filename name="agency.txt"/>
+            <filename name="calendar.txt"/>
+            <filename name="calendar_dates.txt"/>
+            <filename name="routes.txt"/>
+            <filename name="trips.txt"/>
+            <filename name="frequencies.txt"/>
+            <filename name="stops.txt"/>
+            <filename name="stop_times.txt"/>
+          </fileset>
+        </zip>
+        <echo>${gtfs-ratbtram.zip}</echo>
+      </sequential>      
+    </outofdate>
+
+  </target>
+
+  <target name="ratbtram-clean"
+    description="remove generated ratbtram files (not downoaded files)">
+    <delete dir="${ratbtram.build.dir}" quiet="true"/>
+    <delete file="${gtfs-ratbtram.zip}" quiet="true"/>
+  </target>
+
+</project>

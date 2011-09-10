@@ -1,0 +1,75 @@
+<project name="btp-otp" default="build" basedir=".">
+  <!-- This file is imported by build.xml. -->
+
+  <target name="otp-properties" depends="check-build.properties">
+    <!-- output files (deleted by otp-clean) -->
+    <property name="graph-builder.xml"
+      value="${otp.home.dir}/graph-builder.xml"/>
+    <property name="otp-graph.obj"
+      value="${otp.home.dir}/Graph.obj"/>
+  </target>
+
+  <target name="otp-graph-builder"
+    description="build OpenTripPlanner graph-builder.xml"
+    depends="otp-properties,osm-merge,metrorex-gtfs,ratbtram-gtfs">
+
+    <local name="otpGraphBuilder-to-btpGraphBuilder.xslt"/>
+    <property name="otpGraphBuilder-to-btpGraphBuilder.xslt"
+      value="${basedir}/src/main/xslt/otpGraphBuilder-to-btpGraphBuilder.xslt"/>
+    <outofdate>
+      <targetfiles path="${graph-builder.xml}"/>
+      <sourcefiles>
+        <pathelement path="${graph-builder.xml}.original"/>
+        <pathelement path="${otpGraphBuilder-to-btpGraphBuilder.xslt}"/>
+      </sourcefiles>
+      <sequential>
+        <fail message="File not found: ${graph-builder.xml}.original &#xA;
+          Please rename the original file: ${graph-builder.xml} &#xA;
+          from the downloaded otp.zip, to: ${graph-builder.xml}.original">
+          <condition>
+            <not><available type="file"
+                   file="${graph-builder.xml}.original"/></not>
+          </condition>
+        </fail>
+        <xslt in="${graph-builder.xml}.original" out="${graph-builder.xml}"
+          style="${otpGraphBuilder-to-btpGraphBuilder.xslt}">
+          <param name="otpDir" expression="${otp.home.dir}"/>
+          <param name="bucharestOsm" expression="${build.bucharest.osm}"/>
+          <param name="metrorexGtfsZip" expression="${gtfs-metrorex.zip}"/>
+          <param name="ratbTramGtfsZip" expression="${gtfs-ratbtram.zip}"/>
+        </xslt>
+        <echo>${graph-builder.xml}</echo>
+      </sequential>
+    </outofdate>
+
+  </target>
+
+  <target name="otp-build-graph"
+    depends="otp-properties,osm-merge,metrorex-gtfs,ratbtram-gtfs,otp-graph-builder"
+    description="build OpenTripPlanner Graph.obj">
+
+    <outofdate>
+      <targetfiles path="${otp-graph.obj}"/>
+      <sourcefiles>
+        <pathelement path="${graph-builder.xml}"/>
+        <pathelement path="${build.bucharest.osm}"/>
+        <pathelement path="${gtfs-metrorex.zip}"/>
+        <pathelement path="${gtfs-ratbtram.zip}"/>
+      </sourcefiles>      
+      <sequential>
+        <java jar="${otp.home.dir}/lib/graph-builder.jar"
+          fork="true" failonerror="true" inputstring="">
+          <jvmarg value="-Xmx512m"/>
+          <arg value="${graph-builder.xml}"/>
+        </java>
+        <echo>${otp-graph.obj}</echo>
+      </sequential>
+    </outofdate>
+  </target>
+
+  <target name="otp-clean" depends="otp-properties"
+    description="remove generated OpenTripPlanner files">
+    <delete file="${graph-builder.xml}"/>
+    <delete file="${otp-graph.obj}"/>
+  </target>
+</project>

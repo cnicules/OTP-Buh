@@ -1,0 +1,507 @@
+<project name="btp-metrorex" default="build" basedir=".">
+  <!-- This file is imported by build.xml. -->
+
+  <!-- directories -->
+  <property name="dl.metrorex.dir" value="${dl.dir}/metrorex"/>
+  <property name="metrorex.build.dir" value="${build.dir}/metrorex"/>
+  <property name="metrorex.gtfs.dir" value="${metrorex.build.dir}/gtfs"/>
+
+  <!-- result -->
+  <property name="gtfs-metrorex.zip" value="${target.dir}/gtfs-metrorex.zip"/>
+
+  <!-- urls -->
+
+  <property name="MetrorexWDScheduleURL"
+    value="http://www.metrorex.ro/operation_schedule__in_working_days_p77-2"/>
+  <property name="MetrorexWEScheduleURL"
+    value="http://www.metrorex.ro/operation_schedule__in_non-working_days_and_holidays_p83-2"/>
+
+  <!--
+     *    Metrorex files
+   -->
+
+  <property name="MetrorexWDFreq.html"
+    value="${dl.metrorex.dir}/metrorex-wd-frequency.html"/>
+  <property name="MetrorexWEFreq.html"
+    value="${dl.metrorex.dir}/metrorex-we-frequency.html"/>
+
+  <target name="metrorex-download-freqs"
+    description="Download run frequencies from Metrorex.ro, if missing">
+
+    <outofdate>
+      <targetfiles path="${MetrorexWDFreq.html}"/>
+      <sourcefiles/>
+      <sequential>
+        <mkdir dir="${dl.metrorex.dir}"/>
+        <get src="${MetrorexWDScheduleURL}" dest="${MetrorexWDFreq.html}"/>
+      </sequential>
+    </outofdate>
+          
+    <outofdate>
+      <targetfiles path="${MetrorexWEFreq.html}"/>
+      <sourcefiles/>
+      <sequential>
+        <sleep seconds="10"/>
+        <mkdir dir="${dl.metrorex.dir}"/>
+        <get src="${MetrorexWEScheduleURL}" dest="${MetrorexWEFreq.html}"/>
+      </sequential>
+    </outofdate>
+  </target>
+  <target name="metrorex-remove-freqs"
+    description="Remove downloaded Metrorex pages to force download">
+    <delete file="${MetrorexWDFreq.html}" quiet="true"/>
+    <delete file="${MetrorexWEFreq.html}" quiet="true"/>
+  </target>
+
+  <target name="metrorex-extract-freqs" 
+    depends="metrorex-download-freqs,compile-java">
+    
+    <local name="in.dir"/>
+    <property name="in.dir" value="${dl.metrorex.dir}"/>
+    <local name="out.dir"/>
+    <property name="out.dir" value="${metrorex.build.dir}/html"/>
+
+    <property name="metrorex-freq-inputs.xml"
+      value="${out.dir}/metrorex-frequency-inputs.xml"/>
+    <outofdate>
+      <targetfiles path="${metrorex-freq-inputs.xml}"/>
+      <sourcefiles>
+        <fileset dir="${in.dir}" includes="metrorex-*-frequency.html"/>
+        <pathelement path="${basedir}/build-metrorex.xml"/>
+      </sourcefiles>
+      <sequential>
+        <mkdir dir="${out.dir}"/>
+        <echo file="${metrorex-freq-inputs.xml}"
+          >&lt;frequency-inputs&gt;&#xA;</echo>
+
+        <for param="svc" list="wd we" delimiter=" ">
+          <sequential>
+            <local name="in"/>
+            <property name="in"
+                      value="${in.dir}/metrorex-@{svc}-frequency.html"/>
+            <sequential>
+              <local name="out"/>
+              <property name="out" value="${out.dir}/M1-@{svc}-frequency.html"/>
+              <outofdate>
+                <targetfiles path="${out}"/>
+                <sourcefiles path="${in}"/>
+                <sequential>
+                  <java classname="ExtractElementWithString"
+                    classpath="${build.dir}/classes"
+                    inputstring="" failonerror="true">
+                    <arg value="${in}"/> <arg value="${out}"/>
+                    <arg value="&lt;table"/>
+                    <arg value="Magistrala I:"/>
+                    <arg value="&lt;/table&gt;"/>
+                  </java>
+                  <echo>${out}</echo>
+                </sequential>
+              </outofdate>
+              <echo file="${metrorex-freq-inputs.xml}" append="true"
+                > &lt;filepath&gt;${out}&lt;/filepath&gt;&#xA;</echo>
+            </sequential>
+            <sequential>
+              <local name="out"/>
+              <property name="out" value="${out.dir}/M2-@{svc}-frequency.html"/>
+              <outofdate>
+                <targetfiles path="${out}"/>
+                <sourcefiles path="${in}"/>
+                <sequential>
+                  <java classname="ExtractElementWithString"
+                    classpath="${build.dir}/classes"
+                    inputstring="" failonerror="true">
+                    <arg value="${in}"/> <arg value="${out}"/>
+                    <arg value="&lt;table"/>
+                    <arg value="Magistrala II:"/>
+                    <arg value="&lt;/table&gt;"/>
+                  </java>
+                  <echo>${out}</echo>
+                </sequential>
+              </outofdate>
+              <echo file="${metrorex-freq-inputs.xml}" append="true"
+                > &lt;filepath&gt;${out}&lt;/filepath&gt;&#xA;</echo>
+            </sequential>
+            <sequential>
+              <local name="out"/>
+              <property name="out" value="${out.dir}/M3-@{svc}-frequency.html"/>
+              <outofdate>
+                <targetfiles path="${out}"/>
+                <sourcefiles path="${in}"/>
+                <sequential>
+                  <java classname="ExtractElementWithString"
+                    classpath="${build.dir}/classes"
+                    inputstring="" failonerror="true">
+                    <arg value="${in}"/> <arg value="${out}"/>
+                    <arg value="&lt;table"/>
+                    <arg value="Magistrala III:"/>
+                    <arg value="&lt;/table&gt;"/>
+                  </java>
+                  <echo>${out}</echo>
+                </sequential>
+              </outofdate>
+              <echo file="${metrorex-freq-inputs.xml}" append="true"
+                > &lt;filepath&gt;${out}&lt;/filepath&gt;&#xA;</echo>
+            </sequential>
+            <sequential>
+              <local name="out"/>
+              <property name="out" value="${out.dir}/M4-@{svc}-frequency.html"/>
+              <outofdate>
+                <targetfiles path="${out}"/>
+                <sourcefiles path="${in}"/>
+                <sequential>
+                  <java classname="ExtractElementWithString"
+                    classpath="${build.dir}/classes"
+                    inputstring="" failonerror="true">
+                    <arg value="${in}"/> <arg value="${out}"/>
+                    <arg value="&lt;table"/>
+                    <arg value="Magistrala IV:"/>
+                    <arg value="&lt;/table&gt;"/>
+                  </java>
+                  <echo>${out}</echo>
+                </sequential>
+              </outofdate>
+              <echo file="${metrorex-freq-inputs.xml}" append="true"
+                > &lt;filepath&gt;${out}&lt;/filepath&gt;&#xA;</echo>
+            </sequential>
+          </sequential>
+        </for>
+
+        <echo file="${metrorex-freq-inputs.xml}"
+          append="true">&lt;/frequency-inputs&gt;&#xA;</echo>
+        <echo>${metrorex-freq-inputs.xml}</echo>
+      </sequential>
+    </outofdate>
+
+  </target>
+
+  <target name="metrorex-parse-freqs" depends="metrorex-extract-freqs">
+    <property name="metrorex-freqs.xml"
+      value="${metrorex.build.dir}/metrorex-frequencies.xml"/>
+    <property name="metrorex-parse-freqs.xslt"
+      value="${basedir}/src/main/xslt/metrorex-parse-frequencies.xslt"/>
+
+    <outofdate>
+      <targetfiles path="${metrorex-freqs.xml}"/>
+      <sourcefiles>
+        <pathelement path="${metrorex-freq-inputs.xml}"/>
+        <pathelement path="${metrorex-parse-freqs.xslt}"/>
+      </sourcefiles>
+      <sequential>
+        <xslt in="${metrorex-freq-inputs.xml}" out="${metrorex-freqs.xml}"
+          style="${metrorex-parse-freqs.xslt}"/>
+        <echo>${metrorex-freqs.xml}</echo>
+      </sequential>
+    </outofdate>
+  </target>
+
+  <target name="metrorex-routes" depends="osm-merge">
+
+    <property name="metrorex-routes.xml"
+      value="${metrorex.build.dir}/metrorex-routes.xml"/>
+    <sequential>
+      <local name="metrorex-osmToRoutesXml.xslt"/>
+      <property name="metrorex-osmToRoutesXml.xslt"
+        value="${basedir}/src/main/xslt/metrorex-osmToRoutesXml.xslt"/>
+
+      <outofdate>
+        <targetfiles path="${metrorex-routes.xml}"/>
+        <sourcefiles>
+          <pathelement path="${build.bucharest.osm}"/>
+          <pathelement path="${metrorex-osmToRoutesXml.xslt}"/>
+        </sourcefiles>
+        <sequential>
+          <mkdir dir="${metrorex.build.dir}"/>
+          <xslt in="${build.bucharest.osm}" out="${metrorex-routes.xml}"
+            style="${metrorex-osmToRoutesXml.xslt}"/>
+          <echo>${metrorex-routes.xml}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+
+    <property name="metrorex.routes.txt"
+      value="${metrorex.gtfs.dir}/routes.txt"/>
+    <sequential>
+      <local name="routes-xmlToGtfsTxt.xslt"/>
+      <property name="routes-xmlToGtfsTxt.xslt"
+        value="${basedir}/src/main/xslt/routes-xmlToGtfsTxt.xslt"/>
+ 
+      <outofdate>
+        <targetfiles path="${metrorex.routes.txt}"/>
+        <sourcefiles>
+          <pathelement path="${metrorex-routes.xml}"/>
+          <pathelement path="${routes-xmlToGtfsTxt.xslt}"/>
+        </sourcefiles>
+        <sequential>
+          <mkdir dir="${metrorex.gtfs.dir}"/>
+          <xslt in="${metrorex-routes.xml}" out="${metrorex.routes.txt}"
+            style="${routes-xmlToGtfsTxt.xslt}"/>
+          <echo>${metrorex.routes.txt}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+  </target>
+
+  <target name="metrorex-trips"
+    depends="metrorex-parse-freqs,metrorex-routes">
+
+    <property name="metrorex-trips.xml"
+      value="${metrorex.build.dir}/metrorex-trips.xml"/>
+    <sequential>
+      <local name="freqs-to-trips.xslt"/>
+      <property name="freqs-to-trips.xslt"
+        value="${basedir}/src/main/xslt/freqs-to-trips.xslt"/>
+      <outofdate>
+        <targetfiles path="${metrorex-trips.xml}"/>
+        <sourcefiles>
+          <pathelement path="${build.bucharest.osm}"/>
+          <pathelement path="${metrorex-routes.xml}"/>
+          <pathelement path="${freqs-to-trips.xslt}"/>
+          <pathelement path="${basedir}/build-metrorex.xml"/>
+        </sourcefiles>
+        <sequential>
+          <xslt in="${metrorex-freqs.xml}" out="${metrorex-trips.xml}"
+            style="${freqs-to-trips.xslt}">
+            <param name="routesXml" expression="${metrorex-routes.xml}"/>
+          </xslt>
+          <echo>${metrorex-trips.xml}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+
+    <property name="metrorex.trips.txt"
+      value="${metrorex.gtfs.dir}/trips.txt"/>
+    <sequential>
+      <local name="trips-xmlToGtfsTxt.xslt"/>
+      <property name="trips-xmlToGtfsTxt.xslt"
+        value="${basedir}/src/main/xslt/trips-xmlToGtfsTxt.xslt"/>
+      <outofdate>
+        <targetfiles path="${metrorex.trips.txt}"/>
+        <sourcefiles>
+          <pathelement path="${metrorex-trips.xml}"/>
+          <pathelement path="${trips-xmlToGtfsTxt.xslt}"/>
+        </sourcefiles>
+        <sequential>
+          <mkdir dir="${metrorex.gtfs.dir}"/>
+          <xslt in="${metrorex-trips.xml}" out="${metrorex.trips.txt}"
+            style="${trips-xmlToGtfsTxt.xslt}"/>
+          <echo>${metrorex.trips.txt}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+
+  </target>
+
+  <target name="metrorex-frequencies"
+    depends="metrorex-parse-freqs,metrorex-trips">
+    <property name="metrorex.frequencies.txt"
+      value="${metrorex.gtfs.dir}/frequencies.txt"/>
+    <sequential>
+      <local name="freqs-xmlToGtfsTxt.xslt"/>
+      <property name="freqs-xmlToGtfsTxt.xslt"
+        value="${basedir}/src/main/xslt/freqs-xmlToGtfsTxt.xslt"/>
+      <outofdate>
+        <targetfiles path="${metrorex.frequencies.txt}"/>
+        <sourcefiles>
+          <pathelement path="${metrorex-freqs.xml}"/>
+          <pathelement path="${metrorex-trips.xml}"/>
+          <pathelement path="${freqs-xmlToGtfsTxt.xslt}"/>
+          <pathelement path="${basedir}/build-metrorex.xml"/>
+        </sourcefiles>
+        <sequential>
+          <mkdir dir="${metrorex.gtfs.dir}"/>
+          <xslt in="${metrorex-freqs.xml}" out="${metrorex.frequencies.txt}"
+            style="${freqs-xmlToGtfsTxt.xslt}">
+            <param name="tripsXml" expression="${metrorex-trips.xml}"/>
+          </xslt>
+          <echo>${metrorex.frequencies.txt}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+  </target>
+
+  <target name="metrorex-stops" depends="osm-merge">
+    <property name="metrorex-route-stops.xml"
+      value="${metrorex.build.dir}/metrorex-route-stops.xml"/>
+    <sequential>
+      <local name="osmSubway-to-xmlRouteStops.xslt"/>
+      <property name="osmSubway-to-xmlRouteStops.xslt"
+        value="${basedir}/src/main/xslt/osmSubway-to-xmlRouteStops.xslt"/>
+      <outofdate>
+        <targetfiles path="${metrorex-route-stops.xml}"/>
+        <sourcefiles>
+          <pathelement path="${build.bucharest.osm}"/>
+          <pathelement path="${osmSubway-to-xmlRouteStops.xslt}"/>
+        </sourcefiles>
+        <sequential>
+          <mkdir dir="${metrorex.build.dir}"/>
+          <xslt in="${build.bucharest.osm}" out="${metrorex-route-stops.xml}"
+            style="${osmSubway-to-xmlRouteStops.xslt}"/>
+          <echo>${metrorex-route-stops.xml}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+
+    <property name="metrorex-stops.xml"
+      value="${metrorex.build.dir}/metrorex-stops.xml"/>
+    <sequential>
+      <local name="routeStops-to-stops.xslt"/>
+      <property name="routeStops-to-stops.xslt"
+        value="${basedir}/src/main/xslt/routeStops-to-stops.xslt"/>
+      <outofdate>
+        <targetfiles path="${metrorex-stops.xml}"/>
+        <sourcefiles>
+          <pathelement path="${metrorex-route-stops.xml}"/>
+          <pathelement path="${routeStops-to-stops.xslt}"/>
+        </sourcefiles>
+        <sequential>
+          <xslt in="${metrorex-route-stops.xml}" out="${metrorex-stops.xml}"
+            style="${routeStops-to-stops.xslt}"/>
+          <echo>${metrorex-stops.xml}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+
+    <property name="metrorex.stops.txt"
+      value="${metrorex.gtfs.dir}/stops.txt" />
+    <sequential>
+      <local name="stops-xmlToGtfsTxt.xslt"/>
+      <property name="stops-xmlToGtfsTxt.xslt"
+        value="${basedir}/src/main/xslt/stops-xmlToGtfsTxt.xslt"/>
+      <outofdate>
+        <targetfiles path="${metrorex.stops.txt}"/>
+        <sourcefiles>
+          <pathelement path="${metrorex-stops.xml}"/>
+          <pathelement path="${stops-xmlToGtfsTxt.xslt}"/>
+        </sourcefiles>
+        <sequential>
+          <xslt in="${metrorex-stops.xml}" out="${metrorex.stops.txt}"
+            style="${stops-xmlToGtfsTxt.xslt}"/>
+          <echo>${metrorex.stops.txt}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+
+  </target>
+
+  <target name="metrorex-stop_times"
+    depends="metrorex-trips,metrorex-stops,compile-java">
+    <property name="metrorex-stop-times.xml"
+      value="${metrorex.build.dir}/metrorex-stop-times.xml"/>
+    <sequential>
+      <local name="metrorex-stopseqs.xml"/>
+      <property name="metrorex-stopseqs.xml"
+        value="${basedir}/src/main/xml/metrorex-stopseqs.xml"/>
+      <local name="metrorex-stop-times.log"/>
+      <property name="metrorex-stop-times.log"
+        value="${metrorex.build.dir}/metrorex-stop-times.log"/>
+      <outofdate>
+        <targetfiles path="${metrorex-stop-times.xml}"/>
+        <sourcefiles>
+          <pathelement path="${metrorex-trips.xml}"/>
+          <pathelement path="${metrorex-stopseqs.xml}"/>
+          <pathelement path="${metrorex-route-stops.xml}"/>
+          <pathelement path="${metrorex-stops.xml}"/>
+          <pathelement path="${build.dir}/classes/GenerateStopTimesWithConstantInterval.class"/>
+          <pathelement path="${build.dir}/classes/Duration.class"/>
+          <pathelement path="${build.dir}/classes/Stop.class"/>
+          <pathelement path="${basedir}/src/main/java/logging.properties"/>
+        </sourcefiles>
+        <sequential>
+          <java classname="GenerateStopTimesWithConstantInterval"
+            classpath="${build.dir}/classes"
+            fork="true" inputstring="" failonerror="true">
+            <jvmarg value="-enableassertions"/>
+            <sysproperty key="java.util.logging.config.file"
+              value="${basedir}/src/main/java/logging.properties"/>
+            <arg value="ro"/>
+            <arg value="${metrorex-trips.xml}"/>
+            <arg value="${metrorex-stopseqs.xml}"/>
+            <arg value="${metrorex-route-stops.xml}"/>
+            <arg value="${metrorex-stops.xml}"/>
+            <arg value="00:00:20"/>
+            <arg value="00:02:40"/>
+            <arg value="${metrorex-stop-times.xml}"/>
+            <arg value="${metrorex-stop-times.log}"/>
+          </java>
+          <echo>${metrorex-stop-times.xml}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+
+    <property name="metrorex.stop_times.txt"
+      value="${metrorex.gtfs.dir}/stop_times.txt"/>
+    <sequential>
+      <local name="stoptimes-xmlToGtfsTxt.xslt"/>
+      <property name="stoptimes-xmlToGtfsTxt.xslt"
+        value="${basedir}/src/main/xslt/stoptimes-xmlToGtfsTxt.xslt"/>
+      <outofdate>
+        <targetfiles path="${metrorex.stop_times.txt}"/>
+        <sourcefiles>
+          <pathelement path="${metrorex-stop-times.xml}"/>
+          <pathelement path="${stoptimes-xmlToGtfsTxt.xslt}"/>
+        </sourcefiles>
+        <sequential>
+          <xslt in="${metrorex-stop-times.xml}" out="${metrorex.stop_times.txt}"
+            style="${stoptimes-xmlToGtfsTxt.xslt}"/>
+          <echo>${metrorex.stop_times.txt}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+  </target>
+
+  <target name="metrorex-agency">
+    <copy file="${basedir}/src/main/txt/agency.txt"
+      todir="${metrorex.gtfs.dir}"/>
+  </target>
+
+  <target name="metrorex-calendar">
+    <copy file="${basedir}/src/main/txt/metrorex-calendar.txt"
+      tofile="${metrorex.gtfs.dir}/calendar.txt"/>
+  </target>
+
+  <target name="metrorex-calendar_dates">
+    <copy file="${basedir}/src/main/txt/metrorex-calendar_dates.txt"
+      tofile="${metrorex.gtfs.dir}/calendar_dates.txt"/>
+  </target>
+
+  <target name="metrorex-gtfs"
+    depends="metrorex-agency,metrorex-calendar,metrorex-calendar_dates,metrorex-routes,metrorex-trips,metrorex-frequencies,metrorex-stops,metrorex-stop_times">
+
+    <outofdate>
+      <targetfiles path="${gtfs-metrorex.zip}"/>
+      <sourcefiles>
+        <pathelement path="${metrorex.gtfs.dir}/agency.txt"/>
+        <pathelement path="${metrorex.gtfs.dir}/calendar.txt"/>
+        <pathelement path="${metrorex.gtfs.dir}/calendar_dates.txt"/>
+        <pathelement path="${metrorex.gtfs.dir}/routes.txt"/>
+        <pathelement path="${metrorex.gtfs.dir}/trips.txt"/>
+        <pathelement path="${metrorex.gtfs.dir}/frequencies.txt"/>
+        <pathelement path="${metrorex.gtfs.dir}/stops.txt"/>
+        <pathelement path="${metrorex.gtfs.dir}/stop_times.txt"/>
+      </sourcefiles>
+      <sequential>
+        <zip basedir="${metrorex.gtfs.dir}" destfile="${gtfs-metrorex.zip}">
+          <fileset dir="${metrorex.gtfs.dir}">
+            <filename name="agency.txt"/>
+            <filename name="calendar.txt"/>
+            <filename name="calendar_dates.txt"/>
+            <filename name="routes.txt"/>
+            <filename name="trips.txt"/>
+            <filename name="frequencies.txt"/>
+            <filename name="stops.txt"/>
+            <filename name="stop_times.txt"/>
+          </fileset>
+        </zip>
+        <echo>${gtfs-metrorex.zip}</echo>
+      </sequential>      
+    </outofdate>
+
+  </target>
+
+  <target name="metrorex-clean"
+    description="remove generated Metrorex files (not downoaded files)">
+    <delete dir="${metrorex.build.dir}" quiet="true"/>
+    <delete file="${gtfs-metrorex.zip}" quiet="true"/>
+  </target>
+
+</project>

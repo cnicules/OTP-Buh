@@ -1,0 +1,166 @@
+<stop-sequences>
+  <route short_name="M1">
+    <stop-sequence dir="forward">
+      <stop number="0" name="Pantelimon"/>
+      <stop number="1" name="Republica"/>
+    </stop-sequence>
+    <stop-sequence dir="backward">
+      <stop number="0" name="Republica"/>
+      <stop number="1" name="Pantelimon"/>
+    </stop-sequence>
+  </route>
+  <route short_name="M1">
+    <stop-sequence dir="forward">
+      <stop number="0" name="Republica"/>
+      <stop number="1" name="Costin Georgian"/>
+      <stop number="3" name="Titan"/>
+      <stop number="4" name="Nicolae Grigorescu"/>
+      <stop number="5" name="Dristor 1"/>
+      <stop number="6" name="Mihai Bravu"/>
+      <stop number="7" name="Timpuri Noi"/>
+      <stop number="8" name="Piata Unirii 1"/>
+      <stop number="9" name="Izvor"/>
+      <stop number="10" name="Eroilor"/>
+      <stop number="11" name="Grozăvești"/>
+      <stop number="12" name="Petrache Poenaru"/>
+      <stop number="13" name="Crângași"/>
+      <stop number="14" name="Basarab (M1, M4)"/>
+      <stop number="15" name="Gara de Nord (M1, M4)"/>
+      <stop number="16" name="Piata Victoriei 1"/>
+      <stop number="17" name="Statia Stefan cel Mare"/>
+      <stop number="18" name="Obor"/>
+      <stop number="19" name="Piata Iancului"/>
+      <stop number="20" name="Piata Muncii"/>
+      <stop number="21" name="Dristor 2"/>
+    </stop-sequence>
+    <stop-sequence dir="backward">
+      <stop number="0" name="Dristor 2"/>
+      <stop number="1" name="Piata Muncii"/>
+      <stop number="2" name="Piata Iancului"/>
+      <stop number="3" name="Obor"/>
+      <stop number="4" name="Statia Stefan cel Mare"/>
+      <stop number="5" name="Piata Victoriei 1"/>
+      <stop number="6" name="Gara de Nord (M1, M4)"/>
+      <stop number="7" name="Basarab (M1, M4)"/>
+      <stop number="8" name="Crângași"/>
+      <stop number="9" name="Petrache Poenaru"/>
+      <stop number="10" name="Grozăvești"/>
+      <stop number="11" name="Eroilor"/>
+      <stop number="12" name="Izvor"/>
+      <stop number="13" name="Piata Unirii 1"/>
+      <stop number="14" name="Timpuri Noi"/>
+      <stop number="15" name="Mihai Bravu"/>
+      <stop number="16" name="Dristor 1"/>
+      <stop number="17" name="Nicolae Grigorescu"/>
+      <stop number="18" name="Titan"/>
+      <stop number="19" name="Costin Georgian"/>
+      <stop number="20" name="Republica"/>
+    </stop-sequence>
+  </route>
+  <route short_name="M2">
+    <stop-sequence dir="forward">
+      <stop number="0" name="Pipera"/>
+      <stop number="1" name="Aurel Vlaicu"/>
+      <stop number="2" name="Piata Aviatorilor"/>
+      <stop number="3" name="Piata Victoriei 2"/>
+      <stop number="4" name="Piata Romana"/>
+      <stop number="5" name="Universitate"/>
+      <stop number="6" name="Piata Unirii 2"/>
+      <stop number="7" name="Tineretului"/>
+      <stop number="8" name="Eroii Revolutiei"/>
+      <stop number="9" name="Constantin Brancoveanu"/>
+      <stop number="10" name="Piata Sudului"/>
+      <stop number="11" name="Aparatorii Patriei"/>
+      <stop number="12" name="Dimitrie Leonida"/>
+      <stop number="13" name="Berceni"/>
+    </stop-sequence>
+    <stop-sequence dir="backward">
+      <stop number="0" name="Berceni"/>
+      <stop number="1" name="Dimitrie Leonida"/>
+      <stop number="2" name="Aparatorii Patriei"/>
+      <stop number="3" name="Piata Sudului"/>
+      <stop number="4" name="Constantin Brancoveanu"/>
+      <stop number="5" name="Eroii Revolutiei"/>
+      <stop number="6" name="Tineretului"/>
+      <stop number="7" name="Piata Unirii 2"/>
+      <stop number="8" name="Universitate"/>
+      <stop number="9" name="Piata Romana"/>
+      <stop number="10" name="Piata Victoriei 2"/>
+      <stop number="11" name="Piata Aviatorilor"/>
+      <stop number="12" name="Aurel Vlaicu"/>
+      <stop number="13" name="Pipera"/>
+    </stop-sequence>
+  </route>
+  <route short_name="M3">
+    <stop-sequence dir="forward">
+      <stop number="0" name="Anghel Saligny"/>
+      <stop number="1" name="Nicolae Teclu"/>
+      <stop number="2" name="1 Decembrie 1918"/>
+      <stop number="3" name="Nicolae Grigorescu"/>
+      <stop number="4" name="Dristor 1"/>
+      <stop number="5" name="Mihai Bravu"/>
+      <stop number="6" name="Timpuri Noi"/>
+      <stop number="7" name="Piata Unirii 1"/>
+      <stop number="8" name="Izvor"/>
+      <stop number="9" name="Eroilor"/>
+      <stop number="10" name="Politehnica"/>
+      <stop number="11" name="Lujerului"/>
+      <stop number="12" name="Gorjului"/>
+      <stop number="13" name="Păcii"/>
+      <stop number="14" name="Preciziei"/>
+    </stop-sequence>
+    <stop-sequence dir="backward">
+      <stop number="0" name="Preciziei"/>
+      <stop number="1" name="Păcii"/>
+      <stop number="2" name="Gorjului"/>
+      <stop number="3" name="Lujerului"/>
+      <stop number="4" name="Politehnica"/>
+      <stop number="5" name="Eroilor"/>
+      <stop number="6" name="Izvor"/>
+      <stop number="7" name="Piata Unirii 1"/>
+      <stop number="8" name="Timpuri Noi"/>
+      <stop number="9" name="Mihai Bravu"/>
+      <stop number="10" name="Dristor 1"/>
+      <stop number="11" name="Nicolae Grigorescu"/>
+      <stop number="12" name="1 Decembrie 1918"/>
+      <stop number="13" name="Nicolae Teclu"/>
+      <stop number="14" name="Anghel Saligny"/>
+    </stop-sequence>
+  </route>
+  <route short_name="M3">
+    <stop-sequence dir="forward">
+      <stop number="0" name="Dristor 1"/>
+      <stop number="1" name="Mihai Bravu"/>
+      <stop number="2" name="Timpuri Noi"/>
+      <stop number="3" name="Piata Unirii 1"/>
+      <stop number="4" name="Izvor"/>
+      <stop number="5" name="Eroilor"/>
+    </stop-sequence>
+    <stop-sequence dir="backward">
+      <stop number="0" name="Eroilor"/>
+      <stop number="1" name="Izvor"/>
+      <stop number="2" name="Piata Unirii 1"/>
+      <stop number="3" name="Timpuri Noi"/>
+      <stop number="4" name="Mihai Bravu"/>
+      <stop number="5" name="Dristor 1"/>
+    </stop-sequence>
+  </route>
+  <route short_name="M4">
+    <stop-sequence dir="forward">
+      <stop number="0" name="Gara de Nord (M1, M4)"/>
+      <stop number="1" name="Basarab (M1, M4)"/>
+      <stop number="2" name="Grivița"/>
+      <stop number="3" name="1 Mai"/>
+      <stop number="4" name="Jiului"/>
+      <stop number="5" name="Parc Bazilescu"/>
+    </stop-sequence>
+    <stop-sequence dir="backward">
+      <stop number="0" name="Parc Bazilescu"/>
+      <stop number="1" name="Jiului"/>
+      <stop number="2" name="1 Mai"/>
+      <stop number="3" name="Grivița"/>
+      <stop number="4" name="Basarab (M1, M4)"/>
+      <stop number="5" name="Gara de Nord (M1, M4)"/>
+    </stop-sequence>
+  </route>
+</stop-sequences>

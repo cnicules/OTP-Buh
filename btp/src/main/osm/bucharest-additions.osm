@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<osm version="0.6">
+ <!-- Add footway connecting Piata Victoreiei 1 and Piata Victoriei 2 -->
+ <node id="582554910" lat="44.4519315" lon="26.0870983" user="razvan85" uid="150632" visible="true" version="6" changeset="3318481" timestamp="2009-12-07T19:04:16Z">
+  <tag k="name" v="Piata Victoriei 1"/>
+  <tag k="railway" v="station"/>
+ </node>
+ <node id="582553764" lat="44.4525032" lon="26.0864971" user="razvan85" uid="150632" visible="true" version="4" changeset="4814263" timestamp="2010-05-26T15:47:45Z">
+  <tag k="addr:city" v="București"/>
+  <tag k="addr:country" v="RO"/>
+  <tag k="name" v="Piata Victoriei 2"/>
+  <tag k="railway" v="station"/>
+ </node>
+ <way id="99999999990001" visible="true" version="1" timestamp="2011-07-17T19:15:00Z">
+  <nd ref="582554910"/>
+  <nd ref="582553764"/>
+  <tag k="name" v="Pasajul pietonal Victoriei"/>
+  <tag k="highway" v="footway"/>
+  <tag k="tunnel" v="yes"/>
+ </way>
+ <!-- Add footway connecting Grozavesti and Pod Grozavesti -->
+ <node id="582975264" lat="44.4428180" lon="26.0599159" user="Strainu" uid="126538" visible="true" version="4" changeset="5512152" timestamp="2010-08-16T19:31:34Z">
+  <tag k="name" v="Grozăvești"/>
+  <tag k="railway" v="station"/>
+  <tag k="wikipedia" v="ro:Grozăvești (stație de metrou)"/>
+ </node>
+ <node id="981543153" lat="44.4425330" lon="26.0605318" user="xybot" uid="70696" visible="true" version="4" changeset="6742403" timestamp="2010-12-23T06:15:32Z">
+  <tag k="name" v="Pod Grozăvești"/>
+  <tag k="railway" v="tram_stop"/>
+ </node>
+ <way id="99999999990002" visible="true" version="1" timestamp="2011-07-24T08:15:00Z">
+  <nd ref="582975264"/>
+  <nd ref="981543153"/>
+  <tag k="name" v="Pasajul pietonal Grozăvești"/>
+  <tag k="highway" v="footway"/>
+  <tag k="tunnel" v="yes"/>
+ </way>
+</osm>

@@ -1,0 +1,4 @@
+agency_id,agency_name,agency_url,agency_timezone,agency_lang,agency_phone
+RATB,"Regia Autonoma de Transport Bucuresti","http://www.ratb.ro","Europe/Bucharest",ro,""
+Metrorex,Metrorex,"http://www.metrorex.ro","Europe/Bucharest",ro,""
+CFR,"Caile Ferate Române","http://www.cfr.ro","Europe/Bucharest",ro,""
