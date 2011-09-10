@@ -1,3 +1,35 @@
+<!-- Extract subway route ids, names, and types from OSM route relations.
+
+  Input document: OpenStreetMap .osm map file.
+    <osm>
+      <node>...</node>
+      ...
+      <way>...</way>
+      ...
+      <relation id="[osmRouteId]">
+        <tag k="route" v="subway"/>
+        <tag k="ref" v="[routeNumber]"/>
+        <tag k="operator" v="[agency]"/>
+        <tag k="name" v="[routeLongName]"/>
+        <nd ... />
+        ...
+        <way ... />
+        ...
+      </relation>
+      ...
+    </osm>
+  
+  Output document: xml form of GTFS routes.txt 
+    <routes>
+      <route route_id="[osmRouteId]" agency_id="[agencyId]"
+             route_short_name="[routeNumber]"
+             route_long_name="[routeLongName]"
+             route_type="1"
+             route_color="[routeColorFromMetrorexMap]"
+             route_text_color="FFFFFF"/>
+       ...
+    </routes>
+-->
 <xsl:transform version="1.0"
                xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 

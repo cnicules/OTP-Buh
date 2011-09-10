@@ -1,3 +1,22 @@
+<!-- Create a txt file with one gtfs zip file per line.
+     (Used as a list of source files in build-otp.xml target otp-build-graph.)
+
+  Input document: gtfs-inputs.xml
+    <gtfs-files>
+      <gtfs-file defaultAgencyId="Metrorex" path="[filePathToSubwayGtfsZip]"/>
+      <gtfs-file defaultAgencyId="RATB" path="[filePathToTramGtfsZip]"/>
+      <gtfs-file defaultAgencyId="RATB" path="[filePathToTrolleybusGtfsZip]"/>
+      <gtfs-file defaultAgencyId="RATB" path="[filePathToUrbanbusGtfsZip]"/>
+      ...
+    </gtfs-files>
+  
+  Output document: gtfs-inputs.txt
+    [filePathToSubwayGtfsZip]    
+    [filePathToTramGtfsZip]
+    [filePathToTrolleybusGtfsZip]
+    [filePathToUrbanbusGtfsZip]
+    ...
+-->
 <xsl:transform version="1.0"
                xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 

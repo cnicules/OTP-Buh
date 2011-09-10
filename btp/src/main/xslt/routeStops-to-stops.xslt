@@ -1,3 +1,23 @@
+<!-- Create a list of stops sorted by id to group duplicate stops
+
+  Input document: *-route-stops.xml
+    <route-stops>
+      <route route_short_name="[routeNumber]"/>
+        <stop stop_id="[osmNodeId]" stop_lat="[latitude]" stop_lon="[longitude]"
+              stop_name="[stopName]"/>
+        ...
+      </route>
+      ...
+    </route-stops>
+
+  Output document: *-stops.xml
+  Stops are sorted by stop_id so duplicates are easy to identify.
+    <stops>
+      <stop stop_id="[osmNodeId]" stop_lat="[latitude]" stop_lon="[longitude]"
+            stop_name="[stopName]"/>
+      ...
+    </stops>
+ -->
 <xsl:transform version="1.0"
                xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 

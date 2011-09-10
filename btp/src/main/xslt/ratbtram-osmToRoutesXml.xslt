@@ -1,3 +1,56 @@
+<!-- Extract tram route ids, names, and types from OSM route relations.
+  Warn if tram route relation in OSM data has no or empty "ref" tag.
+  Warn if [routeNumber] in OSM data is not found in stop-sequences.
+
+  Input document: OpenStreetMap .osm map file.
+    <osm>
+      <node>...</node>
+      ...
+      <way>...</way>
+      ...
+      <relation id="[osmRouteId]">
+        <tag k="route" v="tram"/>
+        <tag k="ref" v="[routeNumber]"/>
+        <tag k="operator" v="[agency]"/>
+        <tag k="name" v="[routeLongName]"/>
+        <nd ... />
+        ...
+        <way ... />
+        ...
+      </relation>
+      ...
+    </osm>
+  
+  Param stopSeqsXml: ratbtram-stopsequences.xml
+    <stop-sequences>
+      <route short_name="[routeNumber]">
+        <stop-sequence dir="forward">
+          <stop number="0" street="[rdName]" name="[begStopName]"/>
+          <stop number="1" street="[rdName]" name="[stopName]"/>
+          ...
+          <stop number="?" street="[rdName]" name="[endStopName]"/>
+        </stop-sequence>
+        <stop-sequence dir="backward">
+          <stop number="0" street="[rdName]" name="[endStopName]"/>
+          <stop number="1" street="[rdName]" name="[stopName]"/>
+          ...
+          <stop number="?" street="[rdName]" name="[begStopName]"/>
+        </stop-sequence>
+      </route>
+      ...
+    </stop-sequences>
+
+  Output document: xml form of GTFS routes.txt 
+    <routes>
+      <route route_id="[osmRouteId]" agency_id="[agencyId]"
+             route_short_name="[routeNumber]"
+             route_long_name="[beginStopName] - [endStopName]"
+             route_type="0"
+             route_color="FF0000"
+             route_text_color="FFFFFF"/>
+       ...
+    </routes>
+-->
 <xsl:transform version="1.0"
                xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 

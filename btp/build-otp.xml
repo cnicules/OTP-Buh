@@ -84,6 +84,7 @@
     <outofdate>
       <targetfiles path="${otp-graph.obj}"/>
       <sourcefiles>
+        <pathelement path="${otp.home.dir}/lib/graph-builder.jar"/>
         <pathelement path="${graph-builder.xml}"/>
         <pathelement path="${build.bucharest.osm}"/>
         <files includesfile="${otpGtfsInputs.txt}"/>

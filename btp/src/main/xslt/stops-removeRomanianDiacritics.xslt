@@ -1,10 +1,34 @@
+<!-- Add attribute stop_name_sans_diacritics="[@stop_name without diacritics]" 
+  to each stop where stop_name contains letters with Romanian diacritic marks.
+  (For example, 'ă' [a-with-brev] is translated to plain 'a'.)
+  The stop_name_sans_diacritics is used when matching stop names in the
+  RATB schedule, which have no diacritics.
+
+  Input document:
+    <stops>
+      <stop stop_id="[osmNodeId]" stop_lat="[latitude]" stop_lon="[longitude]"
+            stop_name="[stopName]"/>
+      ...
+    </stops>
+
+  Output document:
+    <stops>
+      <stop stop_id="[osmNodeId]" stop_lat="[latitude]" stop_lon="[longitude]"
+            stop_name="[stopNameWithNoDiacritics]"/>
+      <stop stop_id="[osmNodeId]" stop_lat="[latitude]" stop_lon="[longitude]"
+            stop_name="[stopNameWithDiacritics]"
+            stop_name_sans_diactrics="[stopNameWithDiacriticsRemoved]"/>
+      ...
+    </stops>
+
+-->
 <xsl:transform version="1.0"
                xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 
   <xsl:output method="xml" encoding="UTF-8"/>
   <xsl:strip-space elements="*"/>
 
-  <!-- add stop_name_sans_diacritics="[@stop_name without diacritics]" -->
+  <!-- -->
   <xsl:template match="/stops">
     <xsl:text>&#xA;</xsl:text>
     <stops>

@@ -1,3 +1,122 @@
+<!-- Create a altered copy of otpDir/graph-builder.xml.original
+
+  Input document: graph-builder.xml.original
+    <beans ...>
+      <bean id="graphBundle" ...>
+        <property name="path" value="/otp"/>
+      </bean>
+      <bean id="gtfsBuilder" ...>
+        <property name="gtfsBundles">
+          <bean id="gtfsBundles" ...>
+            <property name="bundles">
+              <list>
+                <bean ...>
+                  <property name="defaultAgencyId" value="TriMet"/>
+                </bean>
+              </list>
+            </property>
+          </bean>
+        </property>
+      </bean>
+      <bean id="nedBuilder" ...>
+        ...
+      </bean>
+      <bean id="osmBuilder" ..>
+        <property name="provider">
+          <bean ...>
+            <property name="path" value="/otp/cache/osm/or-wa.osm"/>
+          </bean>
+        </property>
+        <property name="defaultWayPropertySetSource">
+          <bean .../>
+        </property>
+      </bean>
+      <bean id="transitStreetLink" .../>
+      <bean id="optimizeTransit" .../>
+      <bean id="graphBuilderTask" ...>
+        <property name="graphBundle" ref="graphBundle"/>
+        <property name="graphBuilders">
+          <list>
+            <ref bean="gtfsBuilder"/>
+            <ref bean="osmBuilder"/>
+            <ref bean="transitStreetLink"/>
+            <ref bean="optimizeTransit"/>
+          </list> 
+        </property>
+      </bean>
+    </beans>
+
+  Param otpDir: file directory where OpenTripPlanner is installed.
+
+  Param bucharestOsm: file path to bucharest.osm (open street map of city).
+
+  Param otpGtfsInputsXml: path to gtfs zip file for each agency.
+    <gtfs-files>
+      <gtfs-file defaultAgencyId="Metrorex" path="[filePathToSubwayGtfsZip]"/>
+      <gtfs-file defaultAgencyId="RATB" path="[filePathToTramGtfsZip]"/>
+      <gtfs-file defaultAgencyId="RATB" path="[filePathToTrolleybusGtfsZip]"/>
+      <gtfs-file defaultAgencyId="RATB" path="[filePathToUrbanbusGtfsZip]"/>
+      ...
+    </gtfs-files>
+
+  Output document: graph-builder.xml
+    <beans ...>
+      <bean id="graphBundle" ...>
+        <property name="path" value="[optDir]"/>
+      </bean>
+      <bean id="gtfsBuilder" ...>
+        <property name="gtfsBundles">
+          <bean id="gtfsBundles" ...>
+            <property name="bundles">
+              <list>
+                <bean ...>
+                  <property name="defaultAgencyId" value="Metrorex"/>
+                  <property name="path" value="[filePathToSubwayGtfsZip]"/>
+                </bean>
+                <bean ...>
+                  <property name="defaultAgencyId" value="RATB"/>
+                  <property name="path" value="[filePathToTramGtfsZip]"/>
+                </bean>
+                <bean ...>
+                  <property name="defaultAgencyId" value="RATB"/>
+                  <property name="path" value="[filePathToTrolleybusGtfsZip]"/>
+                </bean>
+                <bean ...>
+                  <property name="defaultAgencyId" value="RATB"/>
+                  <property name="path" value="[filePathToUrbanbusGtfsZip]"/>
+                </bean>
+                ...
+              </list>
+            </property>
+          </bean>
+        </property>
+      </bean>
+      <bean id="osmBuilder" ..>
+        <property name="provider">
+          <bean ...>
+            <property name="path" value="[bucharestOsm]"/>
+          </bean>
+        </property>
+        <property name="defaultWayPropertySetSource">
+          <bean .../>
+        </property>
+      </bean>
+      <bean id="transitStreetLink" .../>
+      <bean id="optimizeTransit" .../>
+      <bean id="graphBuilderTask" ...>
+        <property name="graphBundle" ref="graphBundle"/>
+        <property name="graphBuilders">
+          <list>
+            <ref bean="gtfsBuilder"/>
+            <ref bean="osmBuilder"/>
+            <ref bean="transitStreetLink"/>
+            <ref bean="optimizeTransit"/>
+          </list> 
+        </property>
+      </bean>
+    </beans>
+
+-->
 <xsl:transform version="1.0"
   xmlns="http://www.springframework.org/schema/beans"
   xmlns:sfb="http://www.springframework.org/schema/beans"

@@ -1,3 +1,44 @@
+<!-- Parse snippets from Metrorex schedule tables into frequency xml data.
+
+  Input document:
+    <frequency-inputs>
+      <filepath>[filepath-to-html-for-one-service-of-one-route]</filepath>
+      ...
+    </frequency-inputs>
+
+  Referenced html snippets:  Some routes (rail lines) have 2 columns, 
+  some have more if there are other (beginStop, endStop) trips.
+    <html>
+    <body>
+    <table>
+      <tbody>
+        <tr><td colspan="2">[a route (rail line) long name]</td></tr>
+        <tr><td>Intervalul</td><td>[beginStopName]</td></tr>
+        <tr><td>[beginTime]-[endTime]</td><td>[headwayMinutes]</td></tr>
+        <tr><td>[beginTime]-[endTime]</td><td>[headwayMinutes]</td></tr>
+        ...
+        <tr><td></td><td>[endStopName]</td></tr>
+      </tbody>
+    </table>
+    </body>
+    </html>        
+
+  Output document:
+  One frequency for each (route, service, beginStop, endStop).
+    <frequencies>
+      <route short_name="[routeNumber]">
+        <service operator="[agencyName]" serviceType="[serviceId]"
+                 beginStop="[fowardBeginStopName]"
+                 endStop="[fowardEndStopName]"/>
+          <frequency dir="both"
+                     beginTime="[HH:mm:ss]" endTime="[HH:mm:ss]"
+                     headwayMinutes="[minutes]"/>
+          ...
+        </service>
+      </route>
+      ...
+    </frequencies>
+-->
 <xsl:transform version="1.0"
                xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 

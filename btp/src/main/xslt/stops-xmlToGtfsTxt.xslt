@@ -1,3 +1,22 @@
+<!-- Transform stops.xml to GTFS stops.txt, omitting duplicate stops.
+  Stops.xml is sorted by id, so duplicates are adjacent stops with same id.
+  Unnamed stops are given the name "(Unnamed stop [osmNodeId])".
+
+  Input Document: *-stops.xml
+    <stops>
+      <stop stop_id="[osmNodeId]" stop_lat="[latitude]" stop_lon="[longitude]"
+            stop_name="[stopName]"/>
+      ...
+    </stops>
+
+  Output Document:
+    stop_id,stop_lat,stop_lon,stop_name
+
+    [osmNodeId],[latitude],[longitude],[stopName]
+    [osmNodeId],[latitude],[longitude],[stopName]
+    ...
+  
+-->
 <xsl:transform version="1.0"
                xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 

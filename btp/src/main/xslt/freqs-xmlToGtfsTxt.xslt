@@ -1,3 +1,26 @@
+<!-- Output CSV lines in format for GTFS frequencies.txt 
+
+  Input document: *-frequencies.xml
+  One frequency for each route, service, direction, (beginStop/endStop).
+  (Two directions may be combined into 'both' if they are otherwise the same.)
+    <frequencies>
+      <route short_name="[routeNumber]">
+        <service operator="[agencyName]" serviceType="[serviceId]"
+                 beginStop="[fowardBeginStopName]"
+                 endStop="[fowardEndStopName]"/>
+          <frequency dir="[both/forward/backward]"
+                     beginTime="[HH:mm:ss]" endTime="[HH:mm:ss]"
+                     headwayMinutes="[minutes]"/>
+          ...
+        </service>
+      </route>
+      ...
+    </frequencies>
+
+  Output document: GTFS frequencies.txt
+-->
+
+
 <xsl:transform version="1.0"
                xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 
@@ -6,8 +29,6 @@
 
   <xsl:param name="tripsXml"/>
   <xsl:variable name="trips" select="document($tripsXml)/trips"/>
-
-  <!-- output csv lines in format for GTFS frequencies.txt -->
 
   <xsl:template match="/frequencies">
     <xsl:text>trip_id,start_time,end_time,headway_secs&#xA;&#xA;</xsl:text>

@@ -1,3 +1,44 @@
+<!-- Create an unsorted list of tram stops on each route represented in OSM map.
+     (Stops are in the order nodes appear in the route and ways of route.)
+
+  Input document: OpenStreetMap .osm map file.
+    <osm>
+      <node id="[osmNodeId]" lat="[latitude]" lon="[longitude]">
+        <tag k="railway" v="tram_stop"/>
+        <tag k="name" v="[osmStopName]"/>
+      </node>
+      <node id="[osmNodeId]" lat="[latitude]" lon="[longitude]">
+        <tag k="railway" v="station"/>
+        <tag k="name" v="[osmStopName]"/>
+      </node>
+      ...
+      <way id="[osmWayId]">
+        <nd ref="[osmNodeId]"/>
+        ...
+      </way>
+      ...
+      <relation id="[osmRouteId]">
+        <tag k="route" v="tram"/>
+        <tag k="ref" v="[routeNumber]"/>
+        <node ref="[osmNodeId]"/>
+        ...
+        <way ref="[osmWayId]"/>
+        ...
+      </relation>
+      ...
+    </osm>
+
+  Output document: 
+    <route-stops>
+      <route route_short_name="[routeNumber]">
+        <stop stop_id="[osmStopId]"
+              stop_lat="[latitude]" stop_lon="[longitude]"
+              stop_name="[osmStopName]"/>
+        ...
+      </route>
+      ...
+    </route-stops>
+-->
 <xsl:transform version="1.0"
                xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 

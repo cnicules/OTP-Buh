@@ -1,3 +1,33 @@
+<!-- Transform stop-times.xml to GTFS stop-times.txt 
+
+  Input document: *-stop-times.xml
+    <stop-times>
+      <stop-time trip_id="[tripId1]" stop_id="[osmNodeId1.0]"
+                 arrival_time="[HH:mm:ss]" departure_time="[HH:mm:ss]"
+                 stop_sequence="00" stop_headsign="[endStopName]"/>
+      <stop-time trip_id="[tripId1]" stop_id="[osmNodeId1.1]"
+                 arrival_time="[HH:mm:ss]" departure_time="[HH:mm:ss]"
+                 stop_sequence="01" stop_headsign="[endStopName]"/>
+      ...                 
+      <stop-time trip_id="[tripId2]" stop_id="[osmNodeId2.0]"
+                 arrival_time="[HH:mm:ss]" departure_time="[HH:mm:ss]"
+                 stop_sequence="00" stop_headsign="[endStopName]"/>
+      <stop-time trip_id="[tripId2]" stop_id="[osmNodeId2.1]"
+                 arrival_time="[HH:mm:ss]" departure_time="[HH:mm:ss]"
+                 stop_sequence="01" stop_headsign="[endStopName]"/>
+      ...                 
+    </stop-times>    
+
+  Output document: stop_times.txt
+    trip_id,arrival_time,departure_time,stop_id,stop_sequence,stop_headsign    
+
+    [tripId1],[HH:mm:ss],[HH:mm:ss],[stopId1.0],00,[endStopName1]
+    [tripId1],[HH:mm:ss],[HH:mm:ss],[stopId1.1],01,[endStopName1]
+    ...
+    [tripId2],[HH:mm:ss],[HH:mm:ss],[stopId2.0],00,[endStopName2]
+    [tripId2],[HH:mm:ss],[HH:mm:ss],[stopId2.1],01,[endStopName2]
+    ...
+-->
 <xsl:transform version="1.0"
                xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 

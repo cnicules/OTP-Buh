@@ -1,3 +1,81 @@
+<!-- Parse snippets from RATB schedule tables into frequency xml data.
+
+  Input document:  type is tram, trob, or ubus, ...
+    <frequency-inputs dir="build/ratb[type]/html">
+      <filepath>ratb[type]-01-freq.html</filepath>
+      <filepath>ratb[type]-04-freq.html</filepath>
+      ...
+    </frequency-inputs>
+
+  Referenced html snippets:
+  (TUR is forward direction.  RETUR is return (backward) direction. 
+   [1stRun] is time of first run of day (prima).
+   [lastRun] is time of last run of day (ultima).
+   [m] is minutes headway between runs.  Lucru is workday service schedule.
+   Sambata is Saturday service schedule.  Duminica is Sunday service schedule.)
+    <html>
+    <body>
+    <table>
+    <tr><td/>
+        <td colspan="2">Plecari TUR</td><td colspan="2">Plecari RETUR</td>
+        <td colspan="5">Interval</td></tr>
+    <tr><td/>
+        <td>Prima</td><td>Ultima</td><td>Prima</td><td>Ultima</td>
+        <td>5-8</td><td>8-13</td><td>13-18</td><td>18-21</td><td>21-24</td></tr>
+    <tr><td>Lucru</td>
+        <td>[1stRun]</td><td>[lastRun]</td><td>[1stRun]</td><td>[lastRun]</td>
+        <td>[m]</td><td>[m]</td><td>[m]</td><td>[m]</td><td>[m]</td></tr>
+    <tr><td>Sambata</td>
+        <td>[1stRun]</td><td>[lastRun]</td><td>[1stRun]</td><td>[lastRun]</td>
+        <td>[m]</td><td>[m]</td><td>[m]</td><td>[m]</td><td>[m]</td></tr>
+    <tr><td>Duminica</td>
+        <td>[1stRun]</td><td>[lastRun]</td><td>[1stRun]</td><td>[lastRun]</td>
+        <td>[m]</td><td>[m]</td><td>[m]</td><td>[m]</td><td>[m]</td></tr>
+    </table>
+    </body>
+    </html>
+
+  Param stopSeqsXml: stop sequences parsed from another table on same page.
+    <stop-sequences>
+      <route short_name="[routeNumber]">
+        <stop-sequence dir="forward">
+          <stop number="0" street="[streetName]" name="[beginStopName]"/>
+          <stop number="1" street="[streetName]" name="[stopName]"/>
+          <stop number="2" street="[streetName]" name="[stopName]"/>
+          ...
+          <stop number="?" street="[streetName]" name="[endStopName]"/>
+        </stop-sequence>
+        <stop-sequence dir="backward">
+          <stop number="0" street="[streetName]" name="[endStopName]"/>
+          <stop number="1" street="[streetName]" name="[stopName]"/>
+          <stop number="2" street="[streetName]" name="[stopName]"/>
+          ...
+          <stop number="?" street="[streetName]" name="[beginStopName]"/>
+        </stop-sequence>
+      </route>
+      ...
+    </stop-sequences>
+
+  Output document:
+  One frequency for each (route, service, beginStop, endStop).
+    <frequencies>
+      <route short_name="[routeNumber]">
+        <service operator="[agencyName]" serviceType="[serviceId]"
+                 beginStop="[fowardBeginStopName]"
+                 endStop="[fowardEndStopName]"/>
+          <frequency dir="forward"
+                     beginTime="[HH:mm:ss]" endTime="[HH:mm:ss]"
+                     headwayMinutes="[minutes]"/>
+          <frequency dir="backward"
+                     beginTime="[HH:mm:ss]" endTime="[HH:mm:ss]"
+                     headwayMinutes="[minutes]"/>
+        </service>
+        ...
+      </route>
+      ...
+    </frequencies>
+
+-->
 <xsl:transform version="1.0"
                xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 

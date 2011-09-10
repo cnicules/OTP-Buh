@@ -1,3 +1,24 @@
+<!-- Convert *-routes.xml to GTFS routes.txt
+
+  Input document: *-routes.xml (xml form of routes.txt)
+    <routes>
+      <route route_id="[osmRouteId]" agency_id="[agencyId]"
+             route_short_name="[routeNumber]"
+             route_long_name="[beginStopName] - [endStopName]"
+             route_type="3"
+             route_color="888888"
+             route_text_color="FFFFFF"/>
+       ...
+    </routes>
+
+  Output document:
+    route_id,agency_id,route_short_name,route_long_name,route_type,route_color,route_text_color
+
+    [osmRouteId],[agencyId],[routeNumber],[routeLongName],3,888888,FFFFFF
+    [osmRouteId],[agencyId],[routeNumber],[routeLongName],3,888888,FFFFFF
+    ...
+
+-->
 <xsl:transform version="1.0"
                xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 
