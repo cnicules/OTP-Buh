@@ -54,11 +54,11 @@ import org.w3c.dom.Node;
  * A stop time is written for each stop in the schedule stop-sequence.
  * (It is more accurate and complete than the stops in the map route.)
  * When the map route contains a stop with the same name, it is used
- * for the stop id (used for location).  Otherwise if another route
- * contains a stop with the same name, that stop is used.  Otherwise
- * if there is a previous stop, it is substituted.  Otherwise the
- * next stop is substituted.  If there are no stops, then the trip
- * is omitted.  <p/>
+ * for the stop id (used for location).  Otherwise if another route of
+ * the same type contains a stop with the same name, that stop is
+ * used.  Otherwise if there is a previous stop, it is substituted.
+ * Otherwise the next stop is substituted.  If no map stops are found
+ * for the scheduled route, then the trip is omitted.  <p/>
  *
  * In all error cases (cases other than a single stop on the map route
  * is found with the same name as the stop in the schedule), a message
@@ -66,11 +66,15 @@ import org.w3c.dom.Node;
  */
 public class GenerateStopTimesWithConstantInterval {
   public static void main(String[] args) {
-    if (args.length != 9) {
+    if (args.length != 10) {
       System.err.println
-        ("parameters: lang tripsXml stopSeqsXml routesStopsXml stopsXml "+
-         "boardingDur travelDur outXml errLog where:\n"+
+        ("parameters: lang routeType "+
+         "tripsXml stopSeqsXml routesStopsXml stopsXml "+
+         "boardingDur travelDur outXml errLog\n"+
+         " where:\n"+
          "  lang        lowercase 2-letter ISO-639 language code\n"+
+         "  routeType   OSM route type: "
+         +             "railway|subway|tram|trolleybus|bus|ferry\n"+
          "  tripsXml    trips/trip/{@tripId,@route_short_name,@direction}\n"+
          "  stopSeqsXml stop-sequences/route{@short_name}/stop-sequence{@dir}/"+
          "stop/{@number,@name}\n"+
@@ -87,6 +91,7 @@ public class GenerateStopTimesWithConstantInterval {
     // parse parameters
     int p = 0;
     Locale locale = new Locale(args[p++]);
+    String routeType = args[p++];
     File tripsXml = new File(args[p++]);
     File stopSeqsXml = new File(args[p++]);
     File routeStopsXml = new File(args[p++]);
@@ -122,7 +127,7 @@ public class GenerateStopTimesWithConstantInterval {
     try { 
       GenerateStopTimesWithConstantInterval generator =
         new GenerateStopTimesWithConstantInterval
-        (locale, tripsXml, stopSeqsXml, routeStopsXml, stopsXml,
+        (locale, routeType, tripsXml, stopSeqsXml, routeStopsXml, stopsXml,
          boardingDur, travelDur, outXml, errLog);
       generator.run();
     } catch (IOException ex) {
@@ -136,6 +141,7 @@ public class GenerateStopTimesWithConstantInterval {
   
   private final Duration boardingDur, travelDur;
   private final File tripsXml, stopSeqsXml, routeStopsXml, stopsXml, outXml;
+  private final String routeType;
 
   private final StopFromId stopFromId = new StopFromId();
   private final StopsFromName stopsFromName;
@@ -143,16 +149,42 @@ public class GenerateStopTimesWithConstantInterval {
     new LinkedHashMap<String, Set<Stop>>();
   private final XPath xpath = XPathFactory.newInstance().newXPath();
 
-  /* route, service, list<stopSeq>, where stopSeq is list<stop>
+  /* (route:(service:list<stopSeq>)), where stopSeq is list<stop>
      May be multiple partial trips or local/express trips on a route. */
   private Map<String, Map<String, List<List<Stop>>>> stopsFromSched =
     new LinkedHashMap<String, Map<String, List<List<Stop>>>>();
 
   private final Logger LOG = Logger.getLogger(this.getClass().getName());
 
+  /**
+   * Construct generator and initialize log handler.
+   * @param locale identifies language used for collator for matching names.
+   * @param routeType OSM route type, such as 
+   * railway, subway, tram, trolleybus, bus, or ferry; used in log messages.
+   * @param tripsXml for each trip, the id, the route, direction,
+   *   and begin and end stops:
+   *   trips/trip{&#64;trip_id, &#64;route_shortName, &#64;direction_id,
+   *   &#64;beginStop, &#64;endStop} where beginStop and endStop are schedule names.
+   * @param stopSeqsXml for each route,
+   *   sequence of stop names parsed from schedule:
+   *   stop-sequences/route{&#64;short_name}/stop-sequence{&#64;dir}/stop{&#64;name}
+   * @param routeStopsXml for each route,
+   *   sequence of stops data parsed from OSM map data:
+   *   route-stops/route{&#64;route_short_name}/stop{&#64;stop_id,&#64;stop_lat,&#64;stop_lon,&#64;stop_name}
+   * @param stopsXml contains stop names possibly with Romanian diactrics removed:
+   *   stops/stop{&#64;stop_id,&#64;stop_lat,&#64;stop_lon,&#64;stop_name[,&#64;stop_name_sans_diacritics]}
+   * @param boardingDur constant boarding time to use at each stop.
+   * @param travelDur constant travel time to use between stops.
+   * @param outXml where to write result stop_times.xml file.
+   * @param errLog where to write log messages.
+   *
+   * @throws IOException if errLog cannot be created.
+   * @throws NullPointerException if any parameter is null.
+   */
   public GenerateStopTimesWithConstantInterval
-    (Locale locale, File tripsXml, File stopSeqsXml, File routeStopsXml, 
-     File stopsXml, Duration boardingDur, Duration travelDur,
+    (Locale locale, String routeType,
+     File tripsXml, File stopSeqsXml, File routeStopsXml, File stopsXml,
+     Duration boardingDur, Duration travelDur,
      File outXml, File errLog) throws IOException
   {
     if (locale == null ||
@@ -168,15 +200,36 @@ public class GenerateStopTimesWithConstantInterval {
     this.travelDur = travelDur;
     this.outXml = outXml;
     this.stopsFromName = new StopsFromName(locale);
+    this.routeType = routeType;
     initLogHandler(errLog);
   }
 
+  /**
+   * Create indexes of map stops. 
+   * <ul>
+   * <li>{@link #parseMapStops} indexes map stops from <code>stopsXml</code>
+   *     by id and name,
+   * <li>{@link #parseRouteStops} indexes map stops from
+   *     <code>routeStopsXml</code> by route.
+   * <li>{@link #locateScheduledStops} indexes map stops by route and scheduled
+   *     order.
+   * </ul>
+   * Called by {@link #run}.
+   */
   protected void init() {
-    parseStops(this.stopsXml);
+    parseMapStops(this.stopsXml);
     parseRouteStops(this.routeStopsXml);
     locateScheduledStops();
   }
 
+  /**
+   * {@link #init Initialize} indexes to find stop ids stops on for each route,
+   * then iterate over trips in <code>tripsXml</code> to 
+   * calculate and write stop times to <code>outXml</code>.
+   * The heuristic for calculating times is to add <code>boardingDur</code>
+   * and <code>travelDur</code> at each stop.
+   * A trip will be skipped if no mapped stops were found for its route.
+   */
   public void run() throws IOException {
     init();
 
@@ -288,7 +341,10 @@ public class GenerateStopTimesWithConstantInterval {
   }
 
 
-  class StopFromId  {
+  /**
+   * Index of stops by map id.
+   */
+  protected class StopFromId  {
     private final HashMap<Long, Stop> map = new HashMap<Long, Stop>();
     public boolean add(Stop stop) {
       Stop oldStop = this.map.put(stop.getId(), stop);
@@ -306,7 +362,12 @@ public class GenerateStopTimesWithConstantInterval {
     public boolean isEmpty() { return this.map.isEmpty(); }
   }
 
-  class StopsFromName {
+  /**
+   * Map name to set of map stops that match the name.
+   * Matching is performed with a primary Collator 
+   * so case is insignificant and some diacritics may be ignored.
+   */
+  protected class StopsFromName {
     private final Collator collator;
     private final HashMap<CollationKey, Set<Stop>> map =
       new HashMap<CollationKey, Set<Stop>>();
@@ -342,7 +403,7 @@ public class GenerateStopTimesWithConstantInterval {
    * and index them by id, and index them by name.  Multiple stops
    * may have the same name.
    */
-  private void parseStops(File stopsXml) {
+  protected void parseMapStops(File stopsXml) {
     NodeList nodeList = selectElements(stopsXml, "/stops/stop");
     for (int i = 0; i < nodeList.getLength(); i++) {
       Element stopElement = (Element) nodeList.item(i);
@@ -358,9 +419,10 @@ public class GenerateStopTimesWithConstantInterval {
   }
 
   /**
-   * Parse stops generated for each route from OSM data.
+   * Parse stops generated for each route from OSM data to
+   * create stopsFromMapRoute (routeName to routeStops).
    */
-  private void parseRouteStops(File routeStopsXml) {
+  protected void parseRouteStops(File routeStopsXml) {
     assert !this.stopFromId.isEmpty();
     this.stopsFromMapRoute.clear();
     NodeList routeList = selectElements(routeStopsXml, "/route-stops/route");
@@ -397,7 +459,26 @@ public class GenerateStopTimesWithConstantInterval {
     }
   }
 
-  private void locateScheduledStops() {
+  /**
+   * For each stop name in each scheduled route, find the stops from
+   * the map for that route, filling this.stopsFromSchedule.
+   * Names are matched by {@link StopsFromName}.
+   * <ul>
+   * <li>If a schedule stop name matches one stop on the map route,
+   *   use that stop.
+   * <li>If a schedule stop name matches more than one stop on the map route,
+   *   pick one (the first). 
+   * <li>If a name is not found on the given map route but is on another route
+   *   with the same route type, substitute one of the other stops
+   *   (the first).
+   * <li>If a name is not found on any route, substitute the latest stop if
+   *   possible, otherwise the next stop.
+   * </ul>
+   * Missing stops are substituted, not skipped, so that the result will hold
+   * the correct number of stops (needed for the fixed duration-per-stop
+   * timing heuristic).
+   */
+  protected void locateScheduledStops() {
     this.stopsFromSched.clear();
     int routeSkipCount = 0, seqSkipCount = 0;
     int missingStopCount = 0;
@@ -411,7 +492,7 @@ public class GenerateStopTimesWithConstantInterval {
       String routeName = schedRouteElement.getAttribute("short_name");
       Set<Stop> routeStops = this.stopsFromMapRoute.get(routeName);
       if (routeStops == null) {
-        LOG.severe("route "+routeName+" not found in OSM map.");
+        LOG.severe(this.routeType+" route "+routeName+" not found in OSM map.");
         routeStops = Collections.emptySet();
       }
 
@@ -430,6 +511,9 @@ public class GenerateStopTimesWithConstantInterval {
         String dir = sequenceElement.getAttribute("dir");
         List<Stop> seqStops = new ArrayList<Stop>();
 
+        List<String> schedStopNamesUnmatched = new ArrayList<String>();
+        List<Stop> schedStopsSubstFromOtherRoute = new ArrayList<Stop>();
+
         Stop latestNonNullStop = null;
         NodeList schedStopNodeList =
           selectElements(sequenceElement, "stop");
@@ -440,17 +524,18 @@ public class GenerateStopTimesWithConstantInterval {
           Set<Stop> namedStops = stopsFromName.get(name);
           if (namedStops == null || namedStops.isEmpty()) {
             ++missingStopCount;
+            schedStopNamesUnmatched.add(name);
             if (latestNonNullStop != null) { 
-              LOG.severe("scheduled stop named "+name+
-                         " on route "+routeName+ 
-                         " is not found in any map route;"+
-                         " substituting latest stop "+latestNonNullStop);
+              LOG.fine
+                ("scheduled "+this.routeType+ " "+routeName+
+                 " stop \""+name+"\" not in map "+this.routeType+" routes;"+
+                 " substituting latest stop "+latestNonNullStop);
               seqStops.add(latestNonNullStop);
             } else {
-              LOG.severe("scheduled stop named "+name+
-                         " on route "+routeName+ 
-                         " is not found in any map route;"+
-                         " will substitute next non-null stop.");
+              LOG.fine
+                ("scheduled "+this.routeType+ " "+routeName+
+                 " stop \""+name+"\" not in map "+this.routeType+" routes;"+
+                 " will substitute next non-null stop.");
               seqStops.add(null);
             }
           } else {
@@ -460,9 +545,9 @@ public class GenerateStopTimesWithConstantInterval {
               latestNonNullStop = intersection.iterator().next();
               seqStops.add(latestNonNullStop); // found it
             } else if (intersection.size() > 1) {
-              LOG.warning("map route "+routeName+
+              LOG.warning("map "+this.routeType+" "+routeName+
                           " has "+intersection.size()+
-                          " mapped stops named \""+name+"\"; "+
+                          " \""+name+"\" stops;"+
                           " taking first for now: "+intersection);
               latestNonNullStop = intersection.iterator().next();  // take first
               seqStops.add(latestNonNullStop); 
@@ -471,12 +556,15 @@ public class GenerateStopTimesWithConstantInterval {
               assert intersection.size() == 0;
               if (namedStops.size() == 1) {
                 latestNonNullStop = namedStops.iterator().next();
-                LOG.warning("map route "+routeName+
-                            " has no stop named "+name+
-                            ", substituting stop with same name "+
-                            "from another route: "+ latestNonNullStop);
+                LOG.fine
+                  ("map "+this.routeType+" route "+routeName+
+                   " has no stop \""+name+
+                   "\"; substituting stop with same name "+
+                   "from another "+this.routeType+" route: "+
+                   latestNonNullStop);
                 seqStops.add(latestNonNullStop);
                 ++sameNameStopSubstCount;
+                schedStopsSubstFromOtherRoute.add(latestNonNullStop);
               } else {
                 // future: maybe try to use 'closest' stop.
                 // But may not be worth effort.
@@ -484,15 +572,15 @@ public class GenerateStopTimesWithConstantInterval {
                 // May be hard if multiple stops are missing.
                 // Clearly bad routes encourage map fixes?
                 latestNonNullStop = namedStops.iterator().next();
-                LOG.warning
-                  ("Warning: map route "+routeName+
-                   " has no stop named "+name+
-                   " and there are multiple stops with that name"+
-                   " from other route(s); substituting first for now: "+
-                   namedStops);
+                LOG.fine
+                  ("map "+this.routeType+" "+routeName+
+                   " has no stop \""+name+"\" and "+
+                   namedStops.size()+" stops have that name"+
+                   " on other "+this.routeType+" route(s); "+
+                   "substituting first for now: "+ namedStops);
                 seqStops.add(latestNonNullStop);
-                ++stopDupCount;
                 ++sameNameStopSubstCount;
+                schedStopsSubstFromOtherRoute.add(latestNonNullStop);
               }
             }
             assert latestNonNullStop != null;
@@ -507,19 +595,31 @@ public class GenerateStopTimesWithConstantInterval {
           }
           
         }
+        Set<Stop> mapRouteStopsUnmatched = new LinkedHashSet<Stop>(routeStops);
+        mapRouteStopsUnmatched.removeAll(seqStops);
+
+        String summary = makeTripSummary(routeName, dir,
+                                         schedStopNamesUnmatched,
+                                         schedStopsSubstFromOtherRoute,
+                                         mapRouteStopsUnmatched);
         if (latestNonNullStop == null) {
-          LOG.severe("route "+routeName+
+          LOG.severe(this.routeType+" route "+routeName+
                      " direction "+dir+" has no located stops.");
           // do not add to sequenceStopsMap.
           ++seqSkipCount;
         } else {
           assert !seqStops.contains(null);
           if (new TreeSet<Stop>(seqStops).size() < 2) {
-            LOG.severe("route "+routeName+" direction "+dir+
+            LOG.severe(this.routeType+" route "+routeName+" direction "+dir+
                        " has less than 2 located stops.");
             // do not add to sequenceStopsMap.
             ++seqSkipCount;
           } else /* has at least two located stops */ {
+            if (!schedStopNamesUnmatched.isEmpty()) {
+              LOG.severe(summary);
+            } else if (summary.length() > 0) {
+              LOG.warning(summary);
+            }
             List<List<Stop>> tripsStopSeqs = sequenceStopsMap.get(dir);
             if (tripsStopSeqs == null) {
               tripsStopSeqs = new ArrayList<List<Stop>>(1);
@@ -529,27 +629,69 @@ public class GenerateStopTimesWithConstantInterval {
           }
         }
       }
-      if (!sequenceStopsMap.isEmpty()) {
-        this.stopsFromSched.put(routeName, sequenceStopsMap);
-      } else {
-        LOG.severe("route "+routeName+" has no located stops.");
+      if (sequenceStopsMap.isEmpty()) {
+        LOG.severe(this.routeType+" route "+routeName+" has no located stops.");
         // do not add to stopsFromSched.
         ++routeSkipCount;
+      } else {
+        this.stopsFromSched.put(routeName, sequenceStopsMap);
       }
     }
     if (routeSkipCount > 0)
-      LOG.info(routeSkipCount+" routes skipped.");
+      LOG.info(routeSkipCount+" "+this.routeType+" routes skipped.");
     if (seqSkipCount > 0)
-      LOG.info(seqSkipCount+ " route direction sequences skipped.");
+      LOG.info(seqSkipCount+ " "+this.routeType+
+               " route direction sequences skipped.");
     if (missingStopCount > 0)
       LOG.info(missingStopCount+" scheduled stop names missing "+
-               "(or spelled differently) from all map routes of same type.");
+               "(or spelled differently) from all map "+
+               this.routeType+" routes.");
     if (sameNameStopSubstCount > 0)
       LOG.info
         (sameNameStopSubstCount+
-         " scheduled stops substituted with off-route stop with same name.");
+         " scheduled stops substituted with stop with same name"+
+         " from another "+this.routeType+" route.");
     if (stopDupCount > 0)
-      LOG.info(stopDupCount+" ambiguous/duplicate stops.");
+      LOG.info(stopDupCount+" ambiguous/duplicate stops from all "+
+               this.routeType+" routes.");
+  }
+  private String makeTripSummary(String routeName, String dir, 
+                                 List<String> schedStopNamesUnmatched,
+                                 List<Stop> schedStopsSubstFromOtherRoute,
+                                 Set<Stop> mapRouteStopsUnmatched) {
+    StringBuilder summary =
+      new StringBuilder(this.routeType+" route "+routeName+ " "+dir+ ":\n"); 
+    int emptyLength = summary.length();
+
+    if (!schedStopNamesUnmatched.isEmpty()) {
+      summary.append("  unmatched schedule stops (not in other map "+
+                     this.routeType+" routes):\n");
+      for (String stopName : schedStopNamesUnmatched) {
+        summary.append("    ").append(stopName).append('\n');
+      }
+    }
+
+    if (!schedStopsSubstFromOtherRoute.isEmpty()) { 
+      summary.append
+        ("  unmatched schedule stops (substituted stop"+
+         " with same name found in another map "+ this.routeType+" route):\n");
+      for (Stop stop : schedStopsSubstFromOtherRoute) {
+        summary.append("    ").append(stop).append('\n');
+      }
+    }
+
+    if (!mapRouteStopsUnmatched.isEmpty() &&
+        // only list unmatched map route stops if there are unmatched
+        // sched stops, because some trips do not use all route stops.
+        // For example, trips that do not go to end of line, or express trips.
+        (!schedStopNamesUnmatched.isEmpty() ||
+         !schedStopsSubstFromOtherRoute.isEmpty())) {
+      summary.append("  unmatched map route stops:\n");
+      for (Stop stop : mapRouteStopsUnmatched) {
+        summary.append("    ").append(stop).append('\n');
+      }
+    }
+    return summary.length() == emptyLength ? "" : summary.toString();
   }
 
 
@@ -578,6 +720,17 @@ public class GenerateStopTimesWithConstantInterval {
     } catch (XPathExpressionException ex) { throw new Error(ex); }
   }
     
+  /**
+   * Create a <code>java.util.logging.FileHander</code> that writes to
+   * <code>errLog</code>.
+   * Initialize the <code>FileHandler</code> with properties from
+   * <code>LogManager.getProperty()</code>
+   * for <code>java.util.logging.FileHandler.formatter</code>, 
+   * <code>java.util.logging.FileHandler.level</code>, 
+   * and <code>this.getClass().getName()+".level"</code>.
+   *
+   * @throws IOException if errLog cannot be created.
+   */
   protected void initLogHandler(File errLog) throws IOException {
     LogManager logMgr = LogManager.getLogManager();
     FileHandler handler = new FileHandler(errLog.toString());

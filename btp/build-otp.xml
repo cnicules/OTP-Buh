@@ -9,18 +9,27 @@
       value="${otp.home.dir}/Graph.obj"/>
   </target>
 
+  <!-- directories -->
+  <property name="otp.build.dir" value="${build.dir}/otp"/>
+
   <target name="otp-graph-builder"
     description="build OpenTripPlanner graph-builder.xml"
-    depends="otp-properties,osm-merge,metrorex-gtfs,ratbtram-gtfs">
+    depends="otp-properties,osm-merge,metrorex-gtfs,ratbtram-gtfs,ratbtrob-gtfs,ratbubus-gtfs">
+
+    <property name="otpGtfsInputs.xml"
+      value="${otp.build.dir}/otp-gtfs-inputs.xml"/>
+    <property name="otpGtfsInputs.txt"
+      value="${otp.build.dir}/otp-gtfs-inputs.txt"/>
 
     <local name="otpGraphBuilder-to-btpGraphBuilder.xslt"/>
     <property name="otpGraphBuilder-to-btpGraphBuilder.xslt"
-      value="${basedir}/src/main/xslt/otpGraphBuilder-to-btpGraphBuilder.xslt"/>
+      value="${base.dir}/src/main/xslt/otpGraphBuilder-to-btpGraphBuilder.xslt"/>
     <outofdate>
       <targetfiles path="${graph-builder.xml}"/>
       <sourcefiles>
         <pathelement path="${graph-builder.xml}.original"/>
         <pathelement path="${otpGraphBuilder-to-btpGraphBuilder.xslt}"/>
+        <pathelement path="${base.dir}/build-otp.xml"/>
       </sourcefiles>
       <sequential>
         <fail message="File not found: ${graph-builder.xml}.original &#xA;
@@ -31,12 +40,36 @@
                    file="${graph-builder.xml}.original"/></not>
           </condition>
         </fail>
+
+        <echo file="${otpGtfsInputs.xml}"
+        >&lt;gtfs-files&gt;&#xA;</echo>
+
+        <echo file="${otpGtfsInputs.xml}" append="true"
+        >  &lt;gtfs-file defaultAgencyId="Metrorex" path="${gtfs-metrorex.zip}"/&gt;&#xA;</echo>
+
+        <echo file="${otpGtfsInputs.xml}" append="true"
+        >  &lt;gtfs-file defaultAgencyId="RATB" path="${gtfs-ratbtram.zip}"/&gt;&#xA;</echo>
+
+        <echo file="${otpGtfsInputs.xml}" append="true"
+        >  &lt;gtfs-file defaultAgencyId="RATB" path="${gtfs-ratbtrob.zip}"/&gt;&#xA;</echo>
+
+        <echo file="${otpGtfsInputs.xml}" append="true"
+        >  &lt;gtfs-file defaultAgencyId="RATB" path="${gtfs-ratbubus.zip}"/&gt;&#xA;</echo>
+
+        <echo file="${otpGtfsInputs.xml}" append="true"
+        >&lt;/gtfs-files&gt;&#xA;</echo>
+
+        <echo>${otpGtfsInputs.xml}</echo>
+
+        <xslt in="${otpGtfsInputs.xml}" out="${otpGtfsInputs.txt}"
+          style="${base.dir}/src/main/xslt/otpGtfsInputs-xmlToTxt.xslt"/>
+        <echo>${otpGtfsInputs.txt}</echo>
+
         <xslt in="${graph-builder.xml}.original" out="${graph-builder.xml}"
-          style="${otpGraphBuilder-to-btpGraphBuilder.xslt}">
+          style="${otpGraphBuilder-to-btpGraphBuilder.xslt}" force="true">
           <param name="otpDir" expression="${otp.home.dir}"/>
           <param name="bucharestOsm" expression="${build.bucharest.osm}"/>
-          <param name="metrorexGtfsZip" expression="${gtfs-metrorex.zip}"/>
-          <param name="ratbTramGtfsZip" expression="${gtfs-ratbtram.zip}"/>
+          <param name="otpGtfsInputsXml" expression="${otpGtfsInputs.xml}"/>
         </xslt>
         <echo>${graph-builder.xml}</echo>
       </sequential>
@@ -45,7 +78,7 @@
   </target>
 
   <target name="otp-build-graph"
-    depends="otp-properties,osm-merge,metrorex-gtfs,ratbtram-gtfs,otp-graph-builder"
+    depends="otp-properties,osm-merge,metrorex-gtfs,ratbtram-gtfs,ratbtrob-gtfs,ratbubus-gtfs,otp-graph-builder"
     description="build OpenTripPlanner Graph.obj">
 
     <outofdate>
@@ -53,8 +86,7 @@
       <sourcefiles>
         <pathelement path="${graph-builder.xml}"/>
         <pathelement path="${build.bucharest.osm}"/>
-        <pathelement path="${gtfs-metrorex.zip}"/>
-        <pathelement path="${gtfs-ratbtram.zip}"/>
+        <files includesfile="${otpGtfsInputs.txt}"/>
       </sourcefiles>      
       <sequential>
         <java jar="${otp.home.dir}/lib/graph-builder.jar"

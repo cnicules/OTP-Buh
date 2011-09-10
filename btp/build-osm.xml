@@ -2,7 +2,7 @@
   <!-- This file is imported by build.xml. -->
 
   <!-- directories -->
-  <property name="src.dir" value="${basedir}/src/main/osm"/>
+  <property name="src.dir" value="${base.dir}/src/main/osm"/>
   <property name="src.add.osm" value="${src.dir}/bucharest-additions.osm"/>
 
   <property name="osm.build.dir" value="${build.dir}/osm"/>

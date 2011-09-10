@@ -24,13 +24,12 @@
           <xsl:variable name="dir" select="@dir"/>
           <xsl:if test="$dir = 'forward' or $dir='both'">
             <xsl:call-template name="freq-row">
-              <xsl:with-param name="trip_id"
-                select="$trips/trip[@route_short_name = $short_name and
-                                    @service_id = $serviceType and
-                                    @direction_id = '0' and
-                                    @beginStop = $beginStop and
-                                    @endStop = $endStop]
-                                   /@trip_id"/>
+              <xsl:with-param name="short_name" select="$short_name"/>
+              <xsl:with-param name="serviceType" select="$serviceType"/>
+              <xsl:with-param name="dir" select="$dir"/>
+              <xsl:with-param name="dir_id" select="'0'"/>
+              <xsl:with-param name="beginStop" select="$beginStop"/>
+              <xsl:with-param name="endStop" select="$endStop"/>
               <xsl:with-param name="beginTime" select="@beginTime"/>
               <xsl:with-param name="endTime" select="@endTime"/>
               <xsl:with-param name="headwayMinutes" select="@headwayMinutes"/>
@@ -38,13 +37,12 @@
           </xsl:if>
           <xsl:if test="$dir = 'backward' or $dir='both'">
             <xsl:call-template name="freq-row">
-              <xsl:with-param name="trip_id"
-                select="$trips/trip[@route_short_name = $short_name and
-                                    @service_id = $serviceType and
-                                    @direction_id = '1' and
-                                    @beginStop = $beginStop and
-                                    @endStop = $endStop]
-                                   /@trip_id"/>
+              <xsl:with-param name="short_name" select="$short_name"/>
+              <xsl:with-param name="serviceType" select="$serviceType"/>
+              <xsl:with-param name="dir" select="$dir"/>
+              <xsl:with-param name="dir_id" select="'1'"/>
+              <xsl:with-param name="beginStop" select="$beginStop"/>
+              <xsl:with-param name="endStop" select="$endStop"/>
               <xsl:with-param name="beginTime" select="@beginTime"/>
               <xsl:with-param name="endTime" select="@endTime"/>
               <xsl:with-param name="headwayMinutes" select="@headwayMinutes"/>
@@ -57,25 +55,44 @@
   </xsl:template>
 
   <xsl:template name="freq-row">
-    <xsl:param name="trip_id"/>
+    <xsl:param name="short_name"/>
+    <xsl:param name="serviceType"/>
+    <xsl:param name="dir"/>
+    <xsl:param name="dir_id"/>
+    <xsl:param name="beginStop"/>
+    <xsl:param name="endStop"/>
     <xsl:param name="beginTime"/>
     <xsl:param name="endTime"/>
     <xsl:param name="headwayMinutes"/>
 
-    <xsl:value-of select="$trip_id"/>
-    <xsl:text>,</xsl:text>
+    <xsl:variable name="trip_id"
+       select="$trips/trip[@route_short_name = $short_name and
+                           @service_id = $serviceType and
+                           @direction_id = $dir_id and
+                           @beginStop = $beginStop and
+                           @endStop = $endStop]
+                          /@trip_id">
+    </xsl:variable>
 
-    <!-- start_time -->
-    <xsl:value-of select="$beginTime"/>
-    <xsl:text>,</xsl:text>
+    <xsl:if test="'' != normalize-space($trip_id)">
 
-    <!-- end_time -->
-    <xsl:value-of select="$endTime"/>
-    <xsl:text>,</xsl:text>
+      <xsl:value-of select="$trip_id"/>
+      <xsl:text>,</xsl:text>
 
-    <!-- headway_secs -->
-    <xsl:value-of select="60 * $headwayMinutes"/>
-    <xsl:text>&#xA;</xsl:text>
+      <!-- start_time -->
+      <xsl:value-of select="$beginTime"/>
+      <xsl:text>,</xsl:text>
+
+      <!-- end_time -->
+      <xsl:value-of select="$endTime"/>
+      <xsl:text>,</xsl:text>
+
+      <!-- headway_secs -->
+      <xsl:value-of select="60 * $headwayMinutes"/>
+      <xsl:text>&#xA;</xsl:text>
+
+    </xsl:if>
+    <!-- Else error msg was previously emitted when trips.xml was generated. -->
 
   </xsl:template>
   

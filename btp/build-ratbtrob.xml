@@ -1,0 +1,639 @@
+<project name="btp-ratbtrob" default="build" basedir=".">
+  <!-- This file is imported by build.xml. -->
+
+  <!-- directories -->
+  <property name="ratbtrob.dl.dir" value="${dl.dir}/ratbtrob"/>
+  <property name="ratbtrob.build.dir" value="${build.dir}/ratbtrob"/>
+  <property name="ratbtrob.gtfs.dir" value="${ratbtrob.build.dir}/gtfs"/>
+
+  <!-- result -->
+  <property name="gtfs-ratbtrob.zip" value="${target.dir}/gtfs-ratbTrolleybus.zip"/>
+
+  <!-- urls -->
+  <property name="RATBTrobListURL"
+    value="http://www.ratb.ro/v_troleibuz.php"/>
+
+  <!--
+     *   RATB files
+   -->
+
+  <property name="RATBTrobList.html"
+    value="${ratbtrob.dl.dir}/RATB-trob-list.html"/>
+
+  <target name="ratbtrob-download-list"
+    description="Download trolleybus line numbers from RATB.ro, if missing">
+
+    <outofdate>
+      <targetfiles path="${RATBTrobList.html}"/>
+      <sourcefiles/>
+      <sequential>
+        <mkdir dir="${ratbtrob.dl.dir}"/>
+        <!-- Don't bother RATB site with frequent downloads.
+             Download only if missing (removed). -->
+        <get src="${RATBTrobListURL}" dest="${RATBTrobList.html}"
+             skipexisting="true" />
+      </sequential>
+    </outofdate>
+  </target>    
+  <target name="ratbtrob-remove-list"
+    description="Remove RATB trolleybus list to force new download">
+    <delete file="${RATBTrobList.html"/>
+  </target>
+
+  <target name="ratbtrob-extract-list" depends="ratbtrob-download-list">
+
+    <property name="trolleybus-numbers.txt"
+      value="${ratbtrob.build.dir}/trolleybus-numbers.txt"/>
+    <outofdate>
+      <targetfiles path="${trolleybus-numbers.txt}"/>
+      <sourcefiles>
+        <pathelement path="${RATBTrobList.html}"/>
+        <pathelement path="${base.dir}/build-ratbtrob.xml"/>
+      </sourcefiles>
+      <sequential>
+        <local name="html-file"/>
+        <loadfile property="html-file" srcFile="${RATBTrobList.html}"/>
+        <fail unless="html-file" message="No ${RATBTrobList.html}"/>
+
+        <!-- the list of trob-line numbers is in a 1-line <select name="tlin1"> -->
+        <local name="select-line"/>
+        <propertyregex property="select-line" input="${html-file}"
+          regexp="&lt;select name=&quot;tlin1&quot;[^&gt;]*&gt;(.*)&lt;/select&gt;"
+          select="\1"/>
+        <fail unless="select-line"
+          message="No &lt;select name=&quot;tlin1&quot;&gt;"/>
+
+        <!-- trim option 0 -->
+        <local name="options-line"/>
+        <propertyregex property="options-line" input="${select-line}"
+          regexp="&lt;option[^&gt;]*&gt;\D+&lt;/option&gt;" replace=""/>
+
+        <!-- remove all but trolleybus numbers separated by spaces -->
+        <local name="trob-numbers"/>
+        <propertyregex property="trob-numbers" input="${options-line}"
+          regexp="&lt;option[^&gt;]*&gt;(\d+)[&lt;]/option[&gt;]"
+          replace="\1 " global="true"/>
+        <fail unless="trob-numbers"
+          message="Unmatched option (nonnumeric?) in list: ${options-line}"/>
+
+        <!-- fail if matched but no trolleybus numbers (should not happen) -->
+        <local name="isEmpty"/>
+        <condition property="isEmpty">
+          <length string="${trob-numbers}" trim="true" when="eq" length="0"/>
+        </condition>    
+        <fail if="isEmpty" message="No trolleybus numbers found"/>
+
+        <echo file="${ratbtrob.build.dir}/trolleybus-numbers.txt">${trob-numbers}</echo>
+
+        <!-- create a backup copy of latest good input file -->
+        <copy file="${RATBTrobList.html}"
+          tofile="${RATBTrobList.html}.good" preservelastmodified="true"/>
+
+        <echo>${trob-numbers}</echo>
+      </sequential>
+    </outofdate>
+    <loadfile property="trob-numbers" srcFile="${trolleybus-numbers.txt}"/>    
+  </target>
+
+  <target name="ratbtrob-download-freqs" depends="ratbtrob-extract-list"
+    description="Download trolleybus line pages from RATB.ro, if missing">
+
+    <!-- Avoid bothering RATB site with frequent/burst downloads.
+         Otherwise they may discourage robots and make extracting data hard. -->
+    <for param="trobNum" list="${trob-numbers}" trim="true" delimiter=" ">
+      <sequential>
+        <local name="trobFile"/>
+        <property name="trobFile"
+          value="${ratbtrob.dl.dir}/RATB-trob-@{trobNum}.html"/>
+        <outofdate>
+          <targetfiles path="${trobFile}"/>
+          <sourcefiles/>
+          <sequential>
+	    <!-- POST to same URL used to GET trob list, with "tlin" param -->
+            <local name="statusCode"/>
+            <postMethod url="${RATBTrobListURL}" responseDataFile="${trobFile}"
+              statusCodeProperty="statusCode">
+              <parameter name="tlin1" value="@{trobNum}"/>
+            </postMethod>
+            <if><equals arg1="${statusCode}" arg2="200"/>
+              <then><echo>Downloaded: ${trobFile}</echo></then>
+              <else><echo>Error ${statusCode} for trolleybus ${trobNum}</echo></else>
+            </if>
+            <sleep seconds="17"/>
+          </sequential>
+        </outofdate>
+      </sequential>
+    </for>
+  </target>
+  <target name="ratbtrob-remove-freqs"
+    description="Remove downloaded RATB trolleybus list and trolleybus pages">
+    <delete file="${RATBTrobList.html}"/>
+    <delete>
+      <fileset dir="${ratbtrob.dl.dir}" includes="ratbtrob-*.html"/>
+    </delete>
+  </target>
+
+  <target name="ratbtrob-extract-freqs-and-stopseqs"
+    depends="ratbtrob-download-freqs,ratbtrob-extract-list,compile-java">
+
+    <local name="in.dir"/>
+    <property name="in.dir" value="${ratbtrob.build.dir}"/>
+    <local name="out.dir"/>
+    <property name="out.dir" value="${ratbtrob.build.dir}/html"/>
+    <property name="ratbtrob-freq-inputs.xml"
+      value="${out.dir}/ratbtrob-frequency-inputs.xml"/>
+    <property name="ratbtrob-stopseq-inputs.xml"
+      value="${out.dir}/ratbtrob-stopseq-inputs.xml"/>
+
+    <outofdate>
+      <targetfiles>
+        <pathelement path="${ratbtrob-freq-inputs.xml}"/>
+        <pathelement path="${ratbtrob-stopseq-inputs.xml}"/>
+      </targetfiles>
+      <sourcefiles>
+        <fileset dir="${ratbtrob.dl.dir}" includes="ratbtrob-*.html"/>
+        <pathelement path="${base.dir}/build-ratbtrob.xml"/>
+      </sourcefiles>
+      <sequential>
+        <mkdir dir="${out.dir}"/>
+        <echo file="${ratbtrob-freq-inputs.xml}"
+          >&lt;frequency-inputs dir=&quot;${out.dir}&quot;&gt;&#xA;</echo>
+        <echo file="${ratbtrob-stopseq-inputs.xml}"
+          >&lt;stop-sequence-inputs dir=&quot;${out.dir}&quot;&gt;&#xA;</echo>
+
+        <for param="trobNum" list="${trob-numbers}" trim="true" delimiter=" ">
+          <sequential>
+            <local name="inPath"/>
+            <property name="inPath"
+              value="${ratbtrob.dl.dir}/RATB-trob-@{trobNum}.html"/>
+            <sequential>
+              <local name="outFreqName"/>
+              <property name="outFreqName"
+                value="ratbtrob-@{trobNum}-freq.html"/>
+              <local name="outFreqPath"/>
+              <property name="outFreqPath" value="${out.dir}/${outFreqName}"/>
+              <outofdate>
+                <targetfiles path="${outFreqPath}"/>
+                <sourcefiles>
+                  <pathelement path="${inPath}"/>
+                  <pathelement
+                   path="${build.dir}/classes/ExtractElementWithString.class"/>
+                </sourcefiles>
+                <sequential>
+                  <java classname="ExtractElementWithString"
+                    classpath="${build.dir}/classes"
+                    inputstring="" failonerror="true">
+                    <arg value="${inPath}"/><arg value="${outFreqPath}"/>
+                    <arg value="&lt;table"/>
+                    <arg value="Lucru"/>
+                    <arg value="&lt;/table&gt;"/>
+                  </java>
+                </sequential>
+              </outofdate>
+              <if><available file="${inPath}"/>
+                <then>
+                  <echo file="${ratbtrob-freq-inputs.xml}" append="true"
+                   > &lt;filename&gt;${outFreqName}&lt;/filename&gt;&#xA;</echo>
+                </then>
+              </if>
+            </sequential>
+
+            <sequential>
+              <local name="outStopSeqName"/>
+              <property name="outStopSeqName"
+                value="ratbtrob-@{trobNum}-stopSeq.html"/>
+              <local name="outStopSeqPath"/>
+              <property name="outStopSeqPath"
+                value="${out.dir}/${outStopSeqName}"/>
+              <outofdate>
+                <targetfiles path="${outStopSeqPath}"/>
+                <sourcefiles>
+                  <pathelement path="${inPath}"/>
+                  <pathelement
+                   path="${build.dir}/classes/ExtractElementWithString.class"/>
+                </sourcefiles>
+                <sequential>
+                  <java classname="ExtractElementWithString"
+                    classpath="${build.dir}/classes"
+                    inputstring="" failonerror="true">
+                    <arg value="${inPath}"/><arg value="${outStopSeqPath}"/>
+                    <arg value="&lt;table"/>
+                    <arg value="Nume Statie"/>
+                    <arg value="&lt;/table&gt;"/>
+                  </java>
+                </sequential>
+              </outofdate>
+              <if><available file="${inPath}"/>
+                <then>
+                  <echo file="${ratbtrob-stopseq-inputs.xml}" append="true"
+                  > &lt;filename&gt;${outStopSeqName}&lt;/filename&gt;&#xA;</echo>
+                </then> 
+              </if>
+            </sequential>
+
+          </sequential>
+        </for>
+
+        <echo file="${ratbtrob-freq-inputs.xml}"
+          append="true">&lt;/frequency-inputs&gt;&#xA;</echo>
+        <echo file="${ratbtrob-stopseq-inputs.xml}"
+          append="true">&lt;/stop-sequence-inputs&gt;&#xA;</echo>
+      </sequential>
+    </outofdate>
+  </target>
+
+  <target name="ratbtrob-parse-stopseqs"
+    depends="ratbtrob-extract-freqs-and-stopseqs">
+
+    <property name="ratbtrob-stopseqs.xml"
+      value="${ratbtrob.build.dir}/ratbtrob-stopsequences.xml"/>
+    <sequential>
+      <local name="ratb-parse-stopseqs.xslt"/>
+      <property name="ratb-parse-stopseqs.xslt"
+        value="${base.dir}/src/main/xslt/ratb-parse-stopseqs.xslt"/>
+
+      <outofdate>
+        <targetfiles path="${ratbtrob-stopseqs.xml}"/>
+        <sourcefiles>
+          <pathelement path="${ratbtrob-stopseq-inputs.xml}"/>
+          <pathelement path="${ratb-parse-stopseqs.xslt}"/>
+          <pathelement path="${base.dir}/build-ratbtrob.xml"/>
+        </sourcefiles>
+        <sequential>
+          <xslt in="${ratbtrob-stopseq-inputs.xml}"
+            out="${ratbtrob-stopseqs.xml}"
+            style="${ratb-parse-stopseqs.xslt}"/>
+          <echo>${ratbtrob-stopseqs.xml}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+  </target>
+
+  <target name="ratbtrob-parse-freqs"
+    depends="ratbtrob-extract-freqs-and-stopseqs,ratbtrob-parse-stopseqs">
+
+    <property name="ratbtrob-freqs.xml"
+      value="${ratbtrob.build.dir}/ratbtrob-frequencies.xml"/>
+    <sequential>
+      <local name="ratb-parse-freqs.xslt"/>
+      <property name="ratb-parse-freqs.xslt"
+        value="${base.dir}/src/main/xslt/ratb-parse-frequencies.xslt"/>
+
+      <outofdate>
+        <targetfiles path="${ratbtrob-freqs.xml}"/>
+        <sourcefiles>
+          <pathelement path="${ratbtrob-freq-inputs.xml}"/>
+          <pathelement path="${ratb-parse-freqs.xslt}"/>
+          <pathelement path="${base.dir}/build-ratbtrob.xml"/>
+        </sourcefiles>
+        <sequential>
+          <xslt in="${ratbtrob-freq-inputs.xml}" out="${ratbtrob-freqs.xml}"
+            style="${ratb-parse-freqs.xslt}">
+            <param name="stopSeqsXml" expression="${ratbtrob-stopseqs.xml}"/>
+          </xslt>
+          <echo>${ratbtrob-freqs.xml}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+  </target>
+
+  <target name="ratbtrob-routes" depends="osm-merge,ratbtrob-parse-stopseqs">
+
+    <property name="ratbtrob-routes.xml"
+      value="${ratbtrob.build.dir}/ratbtrob-routes.xml"/>
+    <sequential>
+      <local name="ratbtrob-osmToRoutesXml.xslt"/>
+      <property name="ratbtrob-osmToRoutesXml.xslt"
+        value="${base.dir}/src/main/xslt/ratbtrob-osmToRoutesXml.xslt"/>
+
+      <mkdir dir="${ratbtrob.build.dir}"/>
+
+      <outofdate>
+        <targetfiles path="${ratbtrob-routes.xml}"/>
+        <sourcefiles>
+          <pathelement path="${build.bucharest.osm}"/>
+          <pathelement path="${ratbtrob-stopseqs.xml}"/>
+          <pathelement path="${ratbtrob-osmToRoutesXml.xslt}"/>
+          <pathelement path="${base.dir}/build-ratbtrob.xml"/>
+        </sourcefiles>
+        <sequential>
+          <xslt in="${build.bucharest.osm}" out="${ratbtrob-routes.xml}"
+            style="${ratbtrob-osmToRoutesXml.xslt}">
+            <param name="stopSeqsXml" expression="${ratbtrob-stopseqs.xml}"/>
+          </xslt>          
+          <echo>${ratbtrob-routes.xml}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+
+    <property name="ratbtrob.routes.txt"
+      value="${ratbtrob.gtfs.dir}/routes.txt"/>
+    <sequential>
+      <local name="routes-xmlToGtfsTxt.xslt"/>
+      <property name="routes-xmlToGtfsTxt.xslt"
+        value="${base.dir}/src/main/xslt/routes-xmlToGtfsTxt.xslt"/>
+
+      <mkdir dir="${ratbtrob.gtfs.dir}"/>
+
+      <outofdate>
+        <targetfiles path="${ratbtrob.routes.txt}"/>
+        <sourcefiles>
+          <pathelement path="${ratbtrob-routes.xml}"/>
+          <pathelement path="${routes-xmlToGtfsTxt.xslt}"/>
+          <pathelement path="${base.dir}/build-ratbtrob.xml"/>
+        </sourcefiles>
+        <sequential>
+          <xslt in="${ratbtrob-routes.xml}" out="${ratbtrob.routes.txt}"
+            style="${routes-xmlToGtfsTxt.xslt}"/>
+          <echo>${ratbtrob.routes.txt}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+  </target>
+
+  <target name="ratbtrob-trips"
+    depends="ratbtrob-parse-freqs,ratbtrob-routes">
+
+    <property name="ratbtrob-trips.xml"
+      value="${ratbtrob.build.dir}/ratbtrob-trips.xml"/>
+    <sequential>
+      <local name="freqs-to-trips.xslt"/>
+      <property name="freqs-to-trips.xslt"
+        value="${base.dir}/src/main/xslt/freqs-to-trips.xslt"/>
+
+      <outofdate>
+        <targetfiles path="${ratbtrob-trips.xml}"/>
+        <sourcefiles>
+          <pathelement path="${ratbtrob-routes.xml}"/>
+          <pathelement path="${ratbtrob-freqs.xml}"/>
+          <pathelement path="${freqs-to-trips.xslt}"/>
+          <pathelement path="${base.dir}/build-ratbtrob.xml"/>
+        </sourcefiles>
+        <sequential>
+          <xslt in="${ratbtrob-freqs.xml}" out="${ratbtrob-trips.xml}"
+            style="${freqs-to-trips.xslt}">
+            <param name="routeType" expression="trolleybus"/>
+            <param name="routesXml" expression="${ratbtrob-routes.xml}"/>
+          </xslt>
+          <echo>${ratbtrob-trips.xml}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+
+    <property name="ratbtrob.trips.txt"
+      value="${ratbtrob.gtfs.dir}/trips.txt"/>
+    <sequential>
+      <local name="trips-xmlToGtfsTxt.xslt"/>
+      <property name="trips-xmlToGtfsTxt.xslt"
+        value="${base.dir}/src/main/xslt/trips-xmlToGtfsTxt.xslt"/>
+      <mkdir dir="${ratbtrob.gtfs.dir}"/>
+
+      <outofdate>
+        <targetfiles path="${ratbtrob.trips.txt}"/>
+        <sourcefiles>
+          <pathelement path="${ratbtrob-trips.xml}"/>
+          <pathelement path="${trips-xmlToGtfsTxt.xslt}"/>
+          <pathelement path="${base.dir}/build-ratbtrob.xml"/>
+        </sourcefiles>
+        <sequential>
+          <xslt in="${ratbtrob-trips.xml}" out="${ratbtrob.trips.txt}"
+            style="${trips-xmlToGtfsTxt.xslt}"/>
+          <echo>${ratbtrob.trips.txt}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+
+  </target>
+
+  <target name="ratbtrob-frequencies"
+    depends="ratbtrob-parse-freqs,ratbtrob-trips">
+    <property name="ratbtrob.frequencies.txt"
+      value="${ratbtrob.gtfs.dir}/frequencies.txt"/>
+    <sequential>
+      <local name="freqs-xmlToGtfsTxt.xslt"/>
+      <property name="freqs-xmlToGtfsTxt.xslt"
+        value="${base.dir}/src/main/xslt/freqs-xmlToGtfsTxt.xslt"/>
+      <outofdate>
+        <targetfiles path="${ratbtrob.frequencies.txt}"/>
+        <sourcefiles>
+          <pathelement path="${ratbtrob-freqs.xml}"/>
+          <pathelement path="${ratbtrob-trips.xml}"/>
+          <pathelement path="${freqs-xmlToGtfsTxt.xslt}"/>
+          <pathelement path="${base.dir}/build-ratbtrob.xml"/>
+        </sourcefiles>
+        <sequential>
+          <mkdir dir="${ratbtrob.gtfs.dir}"/>
+          <xslt in="${ratbtrob-freqs.xml}" out="${ratbtrob.frequencies.txt}"
+            style="${freqs-xmlToGtfsTxt.xslt}">
+            <param name="tripsXml" expression="${ratbtrob-trips.xml}"/>
+          </xslt>
+          <echo>${ratbtrob.frequencies.txt}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+  </target>
+
+  <target name="ratbtrob-stops" depends="osm-merge">
+    <property name="ratbtrob-route-stops.xml"
+      value="${ratbtrob.build.dir}/ratbtrob-route-stops.xml"/>
+    <sequential>
+      <local name="osmTrob-to-xmlRouteStops.xslt"/>
+      <property name="osmTrob-to-xmlRouteStops.xslt"
+        value="${base.dir}/src/main/xslt/osmTrolleybus-to-xmlRouteStops.xslt"/>
+      <outofdate>
+        <targetfiles path="${ratbtrob-route-stops.xml}"/>
+        <sourcefiles>
+          <pathelement path="${build.bucharest.osm}"/>
+          <pathelement path="${osmTrob-to-xmlRouteStops.xslt}"/>
+        </sourcefiles>
+        <sequential>
+          <mkdir dir="${ratbtrob.build.dir}"/>
+          <xslt in="${build.bucharest.osm}" out="${ratbtrob-route-stops.xml}"
+            style="${osmTrob-to-xmlRouteStops.xslt}"/>
+          <echo>${ratbtrob-route-stops.xml}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+
+    <property name="ratbtrob-stops.xml"
+      value="${ratbtrob.build.dir}/ratbtrob-stops.xml"/>
+    <sequential>
+      <local name="routeStops-to-stops.xslt"/>
+      <property name="routeStops-to-stops.xslt"
+        value="${base.dir}/src/main/xslt/routeStops-to-stops.xslt"/>
+      <outofdate>
+        <targetfiles path="${ratbtrob-stops.xml}"/>
+        <sourcefiles>
+          <pathelement path="${ratbtrob-route-stops.xml}"/>
+          <pathelement path="${routeStops-to-stops.xslt}"/>
+        </sourcefiles>
+        <sequential>
+          <xslt in="${ratbtrob-route-stops.xml}" out="${ratbtrob-stops.xml}"
+            style="${routeStops-to-stops.xslt}"/>
+          <echo>${ratbtrob-stops.xml}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+
+    <property name="ratbtrob-stops-sans-ro-diacritics.xml"
+      value="${ratbtrob.build.dir}/ratbtrob-stops-sans-ro-diacritics.xml"/>
+    <sequential>
+      <local name="stops-removeRomanianDiacritics.xslt"/>
+      <property name="stops-removeRomanianDiacritics.xslt"
+        value="${base.dir}/src/main/xslt/stops-removeRomanianDiacritics.xslt"/>
+      <outofdate>
+        <targetfiles path="${ratbtrob-stops-sans-ro-diacritics.xml}"/>
+        <sourcefiles>
+          <pathelement path="${ratbtrob-stops.xml}"/>
+          <pathelement path="${stops-removeRomanianDiacritics.xslt}"/>
+        </sourcefiles>
+        <sequential>
+          <xslt in="${ratbtrob-stops.xml}"
+            out="${ratbtrob-stops-sans-ro-diacritics.xml}"
+            style="${stops-removeRomanianDiacritics.xslt}"/>
+          <echo>${ratbtrob-stops-sans-ro-diacritics.xml}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+
+    <property name="ratbtrob.stops.txt"
+      value="${ratbtrob.gtfs.dir}/stops.txt" />
+    <sequential>
+      <local name="stops-xmlToGtfsTxt.xslt"/>
+      <property name="stops-xmlToGtfsTxt.xslt"
+        value="${base.dir}/src/main/xslt/stops-xmlToGtfsTxt.xslt"/>
+      <outofdate>
+        <targetfiles path="${ratbtrob.stops.txt}"/>
+        <sourcefiles>
+          <pathelement path="${ratbtrob-stops.xml}"/>
+          <pathelement path="${stops-xmlToGtfsTxt.xslt}"/>
+        </sourcefiles>
+        <sequential>
+          <xslt in="${ratbtrob-stops.xml}" out="${ratbtrob.stops.txt}"
+            style="${stops-xmlToGtfsTxt.xslt}"/>
+          <echo>${ratbtrob.stops.txt}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+
+  </target>
+
+  <target name="ratbtrob-stop_times"
+    depends="ratbtrob-trips,ratbtrob-parse-stopseqs,ratbtrob-stops,compile-java">
+    <property name="ratbtrob-stop-times.xml"
+      value="${ratbtrob.build.dir}/ratbtrob-stop-times.xml"/>
+    <sequential>
+      <local name="ratbtrob-stop-times.log"/>
+      <property name="ratbtrob-stop-times.log"
+        value="${ratbtrob.build.dir}/ratbtrob-stop-times.log"/>
+      <outofdate>
+        <targetfiles path="${ratbtrob-stop-times.xml}"/>
+        <sourcefiles>
+          <pathelement path="${ratbtrob-trips.xml}"/>
+          <pathelement path="${ratbtrob-stopseqs.xml}"/>
+          <pathelement path="${ratbtrob-route-stops.xml}"/>
+          <pathelement path="${ratbtrob-stops-sans-ro-diacritics.xml}"/>
+          <pathelement path="${build.dir}/classes/GenerateStopTimesWithConstantInterval.class"/>
+          <pathelement path="${build.dir}/classes/Duration.class"/>
+          <pathelement path="${build.dir}/classes/Stop.class"/>
+          <pathelement path="${base.dir}/src/main/java/logging.properties"/>
+        </sourcefiles>
+        <sequential>
+          <java classname="GenerateStopTimesWithConstantInterval"
+            classpath="${build.dir}/classes"
+            fork="true" inputstring="" failonerror="true">
+            <jvmarg value="-enableassertions"/>
+            <sysproperty key="java.util.logging.config.file"
+              value="${base.dir}/src/main/java/logging.properties"/>
+            <arg value="ro"/>
+            <arg value="trolleybus"/>
+            <arg value="${ratbtrob-trips.xml}"/>
+            <arg value="${ratbtrob-stopseqs.xml}"/>
+            <arg value="${ratbtrob-route-stops.xml}"/>
+            <arg value="${ratbtrob-stops-sans-ro-diacritics.xml}"/>
+            <arg value="00:00:20"/>
+            <arg value="00:02:40"/>
+            <arg value="${ratbtrob-stop-times.xml}"/>
+            <arg value="${ratbtrob-stop-times.log}"/>
+          </java>
+          <echo>${ratbtrob-stop-times.xml}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+
+    <property name="ratbtrob.stop_times.txt"
+      value="${ratbtrob.gtfs.dir}/stop_times.txt"/>
+    <sequential>
+      <local name="stoptimes-xmlToGtfsTxt.xslt"/>
+      <property name="stoptimes-xmlToGtfsTxt.xslt"
+        value="${base.dir}/src/main/xslt/stoptimes-xmlToGtfsTxt.xslt"/>
+      <outofdate>
+        <targetfiles path="${ratbtrob.stop_times.txt}"/>
+        <sourcefiles>
+          <pathelement path="${ratbtrob-stop-times.xml}"/>
+          <pathelement path="${stoptimes-xmlToGtfsTxt.xslt}"/>
+        </sourcefiles>
+        <sequential>
+          <xslt in="${ratbtrob-stop-times.xml}" out="${ratbtrob.stop_times.txt}"
+            style="${stoptimes-xmlToGtfsTxt.xslt}"/>
+          <echo>${ratbtrob.stop_times.txt}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+  </target>
+
+  <target name="ratbtrob-agency">
+    <copy file="${base.dir}/src/main/txt/agency.txt"
+      todir="${ratbtrob.gtfs.dir}"/>
+  </target>
+
+  <target name="ratbtrob-calendar">
+    <copy file="${base.dir}/src/main/txt/ratb-calendar.txt"
+      tofile="${ratbtrob.gtfs.dir}/calendar.txt"/>
+  </target>
+
+  <target name="ratbtrob-calendar_dates">
+    <copy file="${base.dir}/src/main/txt/ratb-calendar_dates.txt"
+      tofile="${ratbtrob.gtfs.dir}/calendar_dates.txt"/>
+  </target>
+
+  <target name="ratbtrob-gtfs"
+    depends="ratbtrob-agency,ratbtrob-calendar,ratbtrob-calendar_dates,ratbtrob-routes,ratbtrob-trips,ratbtrob-frequencies,ratbtrob-stops,ratbtrob-stop_times">
+    <outofdate>
+      <targetfiles path="${gtfs-ratbtrob.zip}"/>
+      <sourcefiles>
+        <pathelement path="${ratbtrob.gtfs.dir}/agency.txt"/>
+        <pathelement path="${ratbtrob.gtfs.dir}/calendar.txt"/>
+        <pathelement path="${ratbtrob.gtfs.dir}/calendar_dates.txt"/>
+        <pathelement path="${ratbtrob.gtfs.dir}/routes.txt"/>
+        <pathelement path="${ratbtrob.gtfs.dir}/trips.txt"/>
+        <pathelement path="${ratbtrob.gtfs.dir}/frequencies.txt"/>
+        <pathelement path="${ratbtrob.gtfs.dir}/stops.txt"/>
+        <pathelement path="${ratbtrob.gtfs.dir}/stop_times.txt"/>
+      </sourcefiles>
+      <sequential>
+        <zip basedir="${ratbtrob.gtfs.dir}" destfile="${gtfs-ratbtrob.zip}">
+          <fileset dir="${ratbtrob.gtfs.dir}">
+            <filename name="agency.txt"/>
+            <filename name="calendar.txt"/>
+            <filename name="calendar_dates.txt"/>
+            <filename name="routes.txt"/>
+            <filename name="trips.txt"/>
+            <filename name="frequencies.txt"/>
+            <filename name="stops.txt"/>
+            <filename name="stop_times.txt"/>
+          </fileset>
+        </zip>
+        <echo>${gtfs-ratbtrob.zip}</echo>
+      </sequential>      
+    </outofdate>
+
+  </target>
+
+  <target name="ratbtrob-clean"
+    description="remove generated ratbtrob files (not downoaded files)">
+    <delete dir="${ratbtrob.build.dir}" quiet="true"/>
+    <delete file="${gtfs-ratbtrob.zip}" quiet="true"/>
+  </target>
+
+</project>

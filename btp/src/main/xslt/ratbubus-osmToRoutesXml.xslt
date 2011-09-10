@@ -11,9 +11,9 @@
     <xsl:text>&#xA;</xsl:text>
     <routes>  
 
-      <xsl:for-each select="osm/relation/tag[@k='route' and @v='tram']">
-        <xsl:sort select="../tag[@k='ref']/@v" data-type="number"/>
-        <xsl:variable name="routeShortName" select="../tag[@k='ref']/@v"/>
+      <xsl:for-each select="osm/relation[tag[@k='route' and @v='bus']]">
+        <xsl:sort select="tag[@k='ref']/@v" data-type="number"/>
+        <xsl:variable name="routeShortName" select="tag[@k='ref']/@v"/>
         <xsl:variable name="routeStopSeq"
           select="$stopSeqs/route[@short_name = $routeShortName]
                                  /stop-sequence[@dir='forward']"/>
@@ -22,27 +22,27 @@
         <xsl:choose>
           <xsl:when test="'' = normalize-space($routeShortName)">
             <xsl:comment>
-              <xsl:text>OSM tram route id=</xsl:text>
+              <xsl:text>OSM bus route id=</xsl:text>
               <xsl:value-of select="@id"/>
               <xsl:text> has no 'ref' tag (containing RATB route number).</xsl:text>
             </xsl:comment>
             <xsl:message>
-              <xsl:text>OSM tram route id=</xsl:text>
+              <xsl:text>OSM bus route id=</xsl:text>
               <xsl:value-of select="@id"/>
               <xsl:text> has no 'ref' tag (containing RATB route number).</xsl:text>
             </xsl:message>
           </xsl:when>
           <xsl:when test="count($routeStopSeq) = 0">
             <xsl:comment>
-              <xsl:text>OSM tram route id=</xsl:text>
+              <xsl:text>OSM bus route id=</xsl:text>
               <xsl:value-of select="@id"/>
-              <xsl:text> has unknown RATB route number: </xsl:text>
+              <xsl:text> has unknown RATB urbanbus route number: </xsl:text>
               <xsl:value-of select="$routeShortName"/>
             </xsl:comment>
             <xsl:message>
-              <xsl:text>OSM tram route id=</xsl:text>
+              <xsl:text>OSM bus route id=</xsl:text>
               <xsl:value-of select="@id"/>
-              <xsl:text> has unknown RATB route number: </xsl:text>
+              <xsl:text> has unknown RATB urbanbus route number: </xsl:text>
               <xsl:value-of select="$routeShortName"/>
             </xsl:message>
           </xsl:when>
@@ -50,12 +50,12 @@
             <route>
               <!-- route_id -->
               <xsl:attribute name="route_id">
-                <xsl:value-of select="../@id"/>
+                <xsl:value-of select="@id"/>
               </xsl:attribute>
 
               <!-- agency_id -->
               <xsl:attribute name="agency_id">
-                <xsl:value-of select="../tag[@k='operator']/@v"/>
+                <xsl:value-of select="tag[@k='operator']/@v"/>
               </xsl:attribute>
 
               <!-- route_short_name -->
@@ -73,14 +73,14 @@
                 <xsl:value-of select="concat($beginStop, ' - ', $endStop)"/>
               </xsl:attribute>
 
-              <!-- route_type: 0=tram (future: 900=tram) -->
+              <!-- route_type: 3=bus (future: 704 Local bus service) -->
               <xsl:attribute name="route_type">
-                <xsl:text>0</xsl:text>
+                <xsl:text>3</xsl:text>
               </xsl:attribute>
 
-              <!-- route_color: red (not yet used by OTP) -->
+              <!-- route_color: gray (not yet used by OTP) -->
               <xsl:attribute name="route_color">
-                <xsl:text>FF0000</xsl:text>
+                <xsl:text>888888</xsl:text>
               </xsl:attribute>
 
               <!-- route_text_color: white (not yet used by OTP) -->

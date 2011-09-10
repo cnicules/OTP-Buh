@@ -67,7 +67,7 @@
       <targetfiles path="${metrorex-freq-inputs.xml}"/>
       <sourcefiles>
         <fileset dir="${in.dir}" includes="metrorex-*-frequency.html"/>
-        <pathelement path="${basedir}/build-metrorex.xml"/>
+        <pathelement path="${base.dir}/build-metrorex.xml"/>
       </sourcefiles>
       <sequential>
         <mkdir dir="${out.dir}"/>
@@ -178,7 +178,7 @@
     <property name="metrorex-freqs.xml"
       value="${metrorex.build.dir}/metrorex-frequencies.xml"/>
     <property name="metrorex-parse-freqs.xslt"
-      value="${basedir}/src/main/xslt/metrorex-parse-frequencies.xslt"/>
+      value="${base.dir}/src/main/xslt/metrorex-parse-frequencies.xslt"/>
 
     <outofdate>
       <targetfiles path="${metrorex-freqs.xml}"/>
@@ -201,7 +201,7 @@
     <sequential>
       <local name="metrorex-osmToRoutesXml.xslt"/>
       <property name="metrorex-osmToRoutesXml.xslt"
-        value="${basedir}/src/main/xslt/metrorex-osmToRoutesXml.xslt"/>
+        value="${base.dir}/src/main/xslt/metrorex-osmToRoutesXml.xslt"/>
 
       <outofdate>
         <targetfiles path="${metrorex-routes.xml}"/>
@@ -223,7 +223,7 @@
     <sequential>
       <local name="routes-xmlToGtfsTxt.xslt"/>
       <property name="routes-xmlToGtfsTxt.xslt"
-        value="${basedir}/src/main/xslt/routes-xmlToGtfsTxt.xslt"/>
+        value="${base.dir}/src/main/xslt/routes-xmlToGtfsTxt.xslt"/>
  
       <outofdate>
         <targetfiles path="${metrorex.routes.txt}"/>
@@ -249,14 +249,14 @@
     <sequential>
       <local name="freqs-to-trips.xslt"/>
       <property name="freqs-to-trips.xslt"
-        value="${basedir}/src/main/xslt/freqs-to-trips.xslt"/>
+        value="${base.dir}/src/main/xslt/freqs-to-trips.xslt"/>
       <outofdate>
         <targetfiles path="${metrorex-trips.xml}"/>
         <sourcefiles>
           <pathelement path="${build.bucharest.osm}"/>
           <pathelement path="${metrorex-routes.xml}"/>
           <pathelement path="${freqs-to-trips.xslt}"/>
-          <pathelement path="${basedir}/build-metrorex.xml"/>
+          <pathelement path="${base.dir}/build-metrorex.xml"/>
         </sourcefiles>
         <sequential>
           <xslt in="${metrorex-freqs.xml}" out="${metrorex-trips.xml}"
@@ -273,7 +273,7 @@
     <sequential>
       <local name="trips-xmlToGtfsTxt.xslt"/>
       <property name="trips-xmlToGtfsTxt.xslt"
-        value="${basedir}/src/main/xslt/trips-xmlToGtfsTxt.xslt"/>
+        value="${base.dir}/src/main/xslt/trips-xmlToGtfsTxt.xslt"/>
       <outofdate>
         <targetfiles path="${metrorex.trips.txt}"/>
         <sourcefiles>
@@ -298,14 +298,14 @@
     <sequential>
       <local name="freqs-xmlToGtfsTxt.xslt"/>
       <property name="freqs-xmlToGtfsTxt.xslt"
-        value="${basedir}/src/main/xslt/freqs-xmlToGtfsTxt.xslt"/>
+        value="${base.dir}/src/main/xslt/freqs-xmlToGtfsTxt.xslt"/>
       <outofdate>
         <targetfiles path="${metrorex.frequencies.txt}"/>
         <sourcefiles>
           <pathelement path="${metrorex-freqs.xml}"/>
           <pathelement path="${metrorex-trips.xml}"/>
           <pathelement path="${freqs-xmlToGtfsTxt.xslt}"/>
-          <pathelement path="${basedir}/build-metrorex.xml"/>
+          <pathelement path="${base.dir}/build-metrorex.xml"/>
         </sourcefiles>
         <sequential>
           <mkdir dir="${metrorex.gtfs.dir}"/>
@@ -325,7 +325,7 @@
     <sequential>
       <local name="osmSubway-to-xmlRouteStops.xslt"/>
       <property name="osmSubway-to-xmlRouteStops.xslt"
-        value="${basedir}/src/main/xslt/osmSubway-to-xmlRouteStops.xslt"/>
+        value="${base.dir}/src/main/xslt/osmSubway-to-xmlRouteStops.xslt"/>
       <outofdate>
         <targetfiles path="${metrorex-route-stops.xml}"/>
         <sourcefiles>
@@ -346,7 +346,7 @@
     <sequential>
       <local name="routeStops-to-stops.xslt"/>
       <property name="routeStops-to-stops.xslt"
-        value="${basedir}/src/main/xslt/routeStops-to-stops.xslt"/>
+        value="${base.dir}/src/main/xslt/routeStops-to-stops.xslt"/>
       <outofdate>
         <targetfiles path="${metrorex-stops.xml}"/>
         <sourcefiles>
@@ -366,7 +366,7 @@
     <sequential>
       <local name="stops-xmlToGtfsTxt.xslt"/>
       <property name="stops-xmlToGtfsTxt.xslt"
-        value="${basedir}/src/main/xslt/stops-xmlToGtfsTxt.xslt"/>
+        value="${base.dir}/src/main/xslt/stops-xmlToGtfsTxt.xslt"/>
       <outofdate>
         <targetfiles path="${metrorex.stops.txt}"/>
         <sourcefiles>
@@ -390,7 +390,7 @@
     <sequential>
       <local name="metrorex-stopseqs.xml"/>
       <property name="metrorex-stopseqs.xml"
-        value="${basedir}/src/main/xml/metrorex-stopseqs.xml"/>
+        value="${base.dir}/src/main/xml/metrorex-stopseqs.xml"/>
       <local name="metrorex-stop-times.log"/>
       <property name="metrorex-stop-times.log"
         value="${metrorex.build.dir}/metrorex-stop-times.log"/>
@@ -404,7 +404,7 @@
           <pathelement path="${build.dir}/classes/GenerateStopTimesWithConstantInterval.class"/>
           <pathelement path="${build.dir}/classes/Duration.class"/>
           <pathelement path="${build.dir}/classes/Stop.class"/>
-          <pathelement path="${basedir}/src/main/java/logging.properties"/>
+          <pathelement path="${base.dir}/src/main/java/logging.properties"/>
         </sourcefiles>
         <sequential>
           <java classname="GenerateStopTimesWithConstantInterval"
@@ -412,8 +412,9 @@
             fork="true" inputstring="" failonerror="true">
             <jvmarg value="-enableassertions"/>
             <sysproperty key="java.util.logging.config.file"
-              value="${basedir}/src/main/java/logging.properties"/>
+              value="${base.dir}/src/main/java/logging.properties"/>
             <arg value="ro"/>
+            <arg value="subway"/>
             <arg value="${metrorex-trips.xml}"/>
             <arg value="${metrorex-stopseqs.xml}"/>
             <arg value="${metrorex-route-stops.xml}"/>
@@ -433,7 +434,7 @@
     <sequential>
       <local name="stoptimes-xmlToGtfsTxt.xslt"/>
       <property name="stoptimes-xmlToGtfsTxt.xslt"
-        value="${basedir}/src/main/xslt/stoptimes-xmlToGtfsTxt.xslt"/>
+        value="${base.dir}/src/main/xslt/stoptimes-xmlToGtfsTxt.xslt"/>
       <outofdate>
         <targetfiles path="${metrorex.stop_times.txt}"/>
         <sourcefiles>
@@ -450,17 +451,17 @@
   </target>
 
   <target name="metrorex-agency">
-    <copy file="${basedir}/src/main/txt/agency.txt"
+    <copy file="${base.dir}/src/main/txt/agency.txt"
       todir="${metrorex.gtfs.dir}"/>
   </target>
 
   <target name="metrorex-calendar">
-    <copy file="${basedir}/src/main/txt/metrorex-calendar.txt"
+    <copy file="${base.dir}/src/main/txt/metrorex-calendar.txt"
       tofile="${metrorex.gtfs.dir}/calendar.txt"/>
   </target>
 
   <target name="metrorex-calendar_dates">
-    <copy file="${basedir}/src/main/txt/metrorex-calendar_dates.txt"
+    <copy file="${base.dir}/src/main/txt/metrorex-calendar_dates.txt"
       tofile="${metrorex.gtfs.dir}/calendar_dates.txt"/>
   </target>
 

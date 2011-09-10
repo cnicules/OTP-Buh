@@ -67,6 +67,8 @@ public class ExtractElementWithString {
     // put quote around attributes to make more like xml
     // Note: not always valid xml because end tags may be missing in html.
     element = element.replaceAll("(\\w+)=(\\w+)","$1=\"$2\"");
+    // remove unmatched quote in attribute
+    element = element.replaceAll(": [\"]#", ": #");
     // fix end tags
     element = element.replaceAll("</td>(</td>)+<tr", "</td></tr><tr");
     element = element.replaceAll("</td>(</td>\\s*)+</tr>", "</td></tr>");

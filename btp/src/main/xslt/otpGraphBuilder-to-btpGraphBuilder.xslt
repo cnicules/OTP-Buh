@@ -11,8 +11,10 @@
 
   <xsl:param name="otpDir" select="'/otp'"/>
   <xsl:param name="bucharestOsm" select="'target/bucharest.osm'"/>
-  <xsl:param name="metrorexGtfsZip" select="'target/metrorex-gtfs.zip'"/>
-  <xsl:param name="ratbTramGtfsZip" select="'target/ratb-tram-gtfs.zip'"/>
+  <xsl:param name="otpGtfsInputsXml" select="'build/otp/otp-gtfs-inputs.xml'"/>
+
+  <xsl:variable name="otpGtfsFiles"
+    select="document($otpGtfsInputsXml)/gtfs-files"/>
 
   <xsl:template match="/sfb:beans">
     <xsl:text>&#xA;</xsl:text>
@@ -46,30 +48,26 @@
           <property name="bundles">
             <xsl:text>&#xA;                    </xsl:text>
             <list>
-              <xsl:text>&#xA;                        </xsl:text>
-              <bean class="org.opentripplanner.graph_builder.model.GtfsBundle">
-                <xsl:text>&#xA;                            </xsl:text>
-                <property name="path">
-                  <xsl:attribute name="value">
-                    <xsl:value-of select="$metrorexGtfsZip"/>
-                  </xsl:attribute>
-                </property>
-                <xsl:text>&#xA;                            </xsl:text>
-                <property name="defaultAgencyId" value="Metrorex"/>
+
+              <xsl:for-each select="$otpGtfsFiles/gtfs-file">              
                 <xsl:text>&#xA;                        </xsl:text>
-              </bean>
-              <xsl:text>&#xA;                        </xsl:text>
-              <bean class="org.opentripplanner.graph_builder.model.GtfsBundle">
-                <xsl:text>&#xA;                            </xsl:text>
-                <property name="path">
-                  <xsl:attribute name="value">
-                    <xsl:value-of select="$ratbTramGtfsZip"/>
-                  </xsl:attribute>
-                </property>
-                <xsl:text>&#xA;                            </xsl:text>
-                <property name="defaultAgencyId" value="RATB"/>
-                <xsl:text>&#xA;                        </xsl:text>
-              </bean>
+                <bean class="org.opentripplanner.graph_builder.model.GtfsBundle">
+                  <xsl:text>&#xA;                            </xsl:text>
+                  <property name="path">
+                    <xsl:attribute name="value">
+                      <xsl:value-of select="@path"/>
+                    </xsl:attribute>
+                  </property>
+                  <xsl:text>&#xA;                            </xsl:text>
+                  <property name="defaultAgencyId">
+                    <xsl:attribute name="value">
+                      <xsl:value-of select="@defaultAgencyId"/>
+                    </xsl:attribute>
+                  </property>
+                  <xsl:text>&#xA;                        </xsl:text>
+                </bean>
+              </xsl:for-each>
+
               <xsl:text>&#xA;                    </xsl:text>
             </list>
             <xsl:text>&#xA;                </xsl:text>
@@ -92,7 +90,7 @@
       <xsl:apply-templates select="@*"/>
 
       <xsl:text>&#xA;        </xsl:text>
-      <xsl:apply-templates select="property[name != 'provider']"/>
+      <xsl:apply-templates select="sfb:property[@name != 'provider']"/>
 
       <xsl:text>&#xA;        </xsl:text>
       <property name="provider">

@@ -1,16 +1,25 @@
 <project name="btp" default="build" basedir=".">
   <description>Bucharest Trip Planner</description>
-  <property name="project.abbr" value="btp"/>
+  <property name="product.name" value="Bucharest Trip Planner"/>
+  <property name="product.version" value="v0.1"/>
+  <property name="product.abbr" value="btp"/>
 
   <!-- directories -->
-  <property name="dl.dir" value="${basedir}/downloads"/>
 
-  <property name="build.dir" value="${basedir}/build"/>
+  <!-- use forward slashes in path in messages
+       because backslashes must be doubled in .properties file -->
+  <pathconvert property="base.dir" dirsep="/">
+    <path location="${basedir}"/>
+  </pathconvert>
 
-  <property name="target.dir" value="${basedir}/target"/>
+  <property name="dl.dir" value="${base.dir}/downloads"/>
+
+  <property name="build.dir" value="${base.dir}/build"/>
+
+  <property name="target.dir" value="${base.dir}/target"/>
     
   <!-- defines osmosis.home.dir, otp.home.dir -->
-  <property file="${basedir}/build.properties"/>
+  <property file="${base.dir}/build.properties"/>
 
 
   <!-- requires ant-contrib tasks: post-method, for-each -->
@@ -19,14 +28,15 @@
   <import file="build-osm.xml"/>
   <import file="build-metrorex.xml"/>
   <import file="build-ratbtram.xml"/>
+  <import file="build-ratbtrob.xml"/>
+  <import file="build-ratbubus.xml"/>
   <import file="build-otp.xml"/>
 
   <target name="build" depends="otp-build-graph"
     description="build OpenTripPlanner graph">
-    <echo>After successful build, then
-      To start server:
-        cd ${otp.home.dir}
-        bin/start-server
+    <echo>After successful build, 
+      (Re)Start server (see README-INSTALL.txt #5).
+
       To use server, open web browser to:
         http://localhost:8080/opentripplanner-webapp/index.html
     </echo>
@@ -40,9 +50,22 @@
 
   <target name="compile-java">
     <mkdir dir="${build.dir}/classes"/>
-    <javac srcdir="${basedir}/src/main/java"
+    <javac srcdir="${base.dir}/src/main/java"
       destdir="${build.dir}/classes"
       includeantruntime="false" debug="true"/>
+  </target>
+
+  <target name="javadoc" description="Generate java code doc in target/javadoc">
+    <delete dir="${target.dir}/javadoc" quiet="true"/>
+    <mkdir  dir="${target.dir}/javadoc"/>
+    <tstamp><format pattern="d MMM yyyy" property="today"/></tstamp>
+    <javadoc destdir="${target.dir}/javadoc"
+             windowtitle="${product.name} ${product.version}"
+             bottom="${product.abbr} ${product.version} (${today})">
+      <sourcefiles>
+        <fileset dir="${base.dir}/src/main/java/" includes="*.java"/>
+      </sourcefiles>
+    </javadoc>
   </target>
 
   <target name="datestamp">
@@ -52,45 +75,49 @@
 
   <target name="zip-sources" depends="datestamp">
     <property name="btp.zip"
-      value="${target.dir}/btp-${todayYMD}-sources.zip"/>
+      value="${target.dir}/${product.abbr}-${todayYMD}-${product.version}-sources.zip"/>
     <outofdate>
       <targetfiles path="${btp.zip}"/>
       <sourcefiles>
-        <fileset dir="${basedir}/.." includes="btp/README-INSTALL.txt"/>
-        <fileset dir="${basedir}/.." includes="btp/ant.sh"/>
-        <fileset dir="${basedir}/.." includes="btp/ant.cmd"/>
-        <fileset dir="${basedir}/.." includes="btp/build.xml"/>
-        <fileset dir="${basedir}/.." includes="btp/build-osm.xml"/>
-        <fileset dir="${basedir}/.." includes="btp/build-metrorex.xml"/>
-        <fileset dir="${basedir}/.." includes="btp/build-ratbtram.xml"/>
-        <fileset dir="${basedir}/.." includes="btp/build-otp.xml"/>
-        <fileset dir="${basedir}/.." includes="btp/src/main/java/*.java"/>
-        <fileset dir="${basedir}/.." includes="btp/src/main/java/logging.properties"/>
-        <fileset dir="${basedir}/.." includes="btp/src/main/osm/*.osm"/>
-        <fileset dir="${basedir}/.." includes="btp/src/main/otp/*.patch"/>
-        <fileset dir="${basedir}/.." includes="btp/src/main/xslt/*.xslt"/>
-        <fileset dir="${basedir}/.." includes="btp/src/main/xml/*.xml"/>
-        <fileset dir="${basedir}/.." includes="btp/src/main/txt/*.txt"/>
+        <fileset dir="${base.dir}/.." includes="btp/README-INSTALL.txt"/>
+        <fileset dir="${base.dir}/.." includes="btp/ant.sh"/>
+        <fileset dir="${base.dir}/.." includes="btp/ant.cmd"/>
+        <fileset dir="${base.dir}/.." includes="btp/build.xml"/>
+        <fileset dir="${base.dir}/.." includes="btp/build-osm.xml"/>
+        <fileset dir="${base.dir}/.." includes="btp/build-metrorex.xml"/>
+        <fileset dir="${base.dir}/.." includes="btp/build-ratbtram.xml"/>
+        <fileset dir="${base.dir}/.." includes="btp/build-ratbtrob.xml"/>
+        <fileset dir="${base.dir}/.." includes="btp/build-ratbubus.xml"/>
+        <fileset dir="${base.dir}/.." includes="btp/build-otp.xml"/>
+        <fileset dir="${base.dir}/.." includes="btp/src/main/java/*.java"/>
+        <fileset dir="${base.dir}/.." includes="btp/src/main/java/logging.properties"/>
+        <fileset dir="${base.dir}/.." includes="btp/src/main/osm/*.osm"/>
+        <fileset dir="${base.dir}/.." includes="btp/src/main/otp/*.patch"/>
+        <fileset dir="${base.dir}/.." includes="btp/src/main/xslt/*.xslt"/>
+        <fileset dir="${base.dir}/.." includes="btp/src/main/xml/*.xml"/>
+        <fileset dir="${base.dir}/.." includes="btp/src/main/txt/*.txt"/>
       </sourcefiles>
       <sequential>
         <delete file="${btp.zip}" quiet="true"/>
         <mkdir dir="${target.dir}"/>
         <zip destfile="${btp.zip}">
-          <fileset dir="${basedir}/.." includes="btp/README-INSTALL.txt"/>
-          <fileset dir="${basedir}/.." includes="btp/ant.sh"/>
-          <fileset dir="${basedir}/.." includes="btp/ant.cmd"/>
-          <fileset dir="${basedir}/.." includes="btp/build.xml"/>
-          <fileset dir="${basedir}/.." includes="btp/build-osm.xml"/>
-          <fileset dir="${basedir}/.." includes="btp/build-metrorex.xml"/>
-          <fileset dir="${basedir}/.." includes="btp/build-ratbtram.xml"/>
-          <fileset dir="${basedir}/.." includes="btp/build-otp.xml"/>
-          <fileset dir="${basedir}/.." includes="btp/src/main/java/*.java"/>
-          <fileset dir="${basedir}/.." includes="btp/src/main/java/logging.properties"/>
-          <fileset dir="${basedir}/.." includes="btp/src/main/osm/*.osm"/>
-          <fileset dir="${basedir}/.." includes="btp/src/main/otp/*.patch"/>
-          <fileset dir="${basedir}/.." includes="btp/src/main/xslt/*.xslt"/>
-          <fileset dir="${basedir}/.." includes="btp/src/main/xml/*.xml"/>
-          <fileset dir="${basedir}/.." includes="btp/src/main/txt/*.txt"/>
+          <fileset dir="${base.dir}/.." includes="btp/README-INSTALL.txt"/>
+          <fileset dir="${base.dir}/.." includes="btp/ant.sh"/>
+          <fileset dir="${base.dir}/.." includes="btp/ant.cmd"/>
+          <fileset dir="${base.dir}/.." includes="btp/build.xml"/>
+          <fileset dir="${base.dir}/.." includes="btp/build-osm.xml"/>
+          <fileset dir="${base.dir}/.." includes="btp/build-metrorex.xml"/>
+          <fileset dir="${base.dir}/.." includes="btp/build-ratbtram.xml"/>
+          <fileset dir="${base.dir}/.." includes="btp/build-ratbtrob.xml"/>
+          <fileset dir="${base.dir}/.." includes="btp/build-ratbubus.xml"/>
+          <fileset dir="${base.dir}/.." includes="btp/build-otp.xml"/>
+          <fileset dir="${base.dir}/.." includes="btp/src/main/java/*.java"/>
+          <fileset dir="${base.dir}/.." includes="btp/src/main/java/logging.properties"/>
+          <fileset dir="${base.dir}/.." includes="btp/src/main/osm/*.osm"/>
+          <fileset dir="${base.dir}/.." includes="btp/src/main/otp/*.patch"/>
+          <fileset dir="${base.dir}/.." includes="btp/src/main/xslt/*.xslt"/>
+          <fileset dir="${base.dir}/.." includes="btp/src/main/xml/*.xml"/>
+          <fileset dir="${base.dir}/.." includes="btp/src/main/txt/*.txt"/>
         </zip>
       </sequential>
     </outofdate>
@@ -98,20 +125,14 @@
   
   <target name="check-build.properties"> 
 
-    <!-- use forward slashes in path in message
-         because backslashes must be doubled in .properties file -->
-    <pathconvert property="basedirpath" dirsep="/">
-      <path location="${basedir}"/>
-    </pathconvert>
-
     <fail message="Missing build.properties file. &#xA;
-      Please create a file ${basedirpath}/build.properties &#xA;
+      Please create a file ${base.dir}/build.properties &#xA;
       with directory paths where Osmosis and OpenTripPlanner are installed.&#xA;
       The build.properties file should look similar to: &#xA;
         osmosis.home.dir = /PATH-TO-INSTALL-DIR/osmosis-0.39 &#xA;
         otp.home.dir = /PATH-TO-INSTALL-DIR/otp">
       <condition>
-        <not><available file="${basedir}/build.properties" type="file"/></not>
+        <not><available file="${base.dir}/build.properties" type="file"/></not>
       </condition>
     </fail>
 
@@ -133,7 +154,7 @@
 
     <fail message="Missing ${property.name} property. &#xA;
       Please define ${property.name} = ${sample.value}&#xA;
-      in the ${basedirpath}/build.properties file &#xA;
+      in the ${base.dir}/build.properties file &#xA;
       using the directory path to where ${program.name} is installed.">
       <condition>
         <not><isset property="${property.name}"/></not>
@@ -142,7 +163,7 @@
 
     <fail message="Empty value: '${property.value}' &#xA;
       Please fix ${property.name} = ${sample.value}&#xA;
-      in the ${basedirpath}/build.properties file &#xA;
+      in the ${base.dir}/build.properties file &#xA;
       using the directory path to where ${program.name} is installed.">
       <condition>
         <equals arg1="${property.value}" arg2="" trim="true"/>
@@ -151,7 +172,7 @@
 
     <fail message="Directory does not exist: ${property.value} &#xA;
       Please fix ${property.name} = ${sample.value}&#xA;
-      in the ${basedirpath}/build.properties file &#xA;
+      in the ${base.dir}/build.properties file &#xA;
       using the directory path to where ${program.name} is installed.">
       <condition>
         <not><available file="${property.value}"/></not>
@@ -160,7 +181,7 @@
 
     <fail message="Not a directory: ${property.value} &#xA;
       Please fix ${property.name} = ${sample.value}&#xA;
-      in the ${basedirpath}/build.properties file &#xA;
+      in the ${base.dir}/build.properties file &#xA;
       using the directory path to where ${program.name} is installed.">
       <condition>
         <not><available file="${property.value}" type="dir"/></not>

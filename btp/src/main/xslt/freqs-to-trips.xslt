@@ -4,6 +4,7 @@
   <xsl:output method="xml" encoding="UTF-8"/>
   <xsl:strip-space elements="*"/>
 
+  <xsl:param name="routeType" select="''"/>
   <xsl:param name="routesXml"/>
   <!-- select="'../../../build/metrorex/metrorex-routes.xml'" -->
 
@@ -18,78 +19,100 @@
         <xsl:variable name="rId"
           select="$routes/route[@route_short_name = $short_name]/@route_id"/>
 
-        <xsl:for-each select="service">
-          <xsl:if test="count(frequency[@dir='forward' or @dir='both']) != 0">
-            <xsl:variable name="endStopAbbr">
-              <xsl:call-template name="abbreviateStop">
-                <xsl:with-param name="stopName" select="@endStop"/>
-              </xsl:call-template>
-            </xsl:variable>
-              
+        <xsl:choose>
+          <xsl:when test="'' = normalize-space($rId)">
             <xsl:text>&#xA;  </xsl:text>
-            <trip>
-              <xsl:attribute name="trip_id">
-                <xsl:value-of
-                  select="concat($short_name, '_',
-                                 substring(@serviceType, 1, 3),
-                                 '_TUR_', $endStopAbbr)"/>
-              </xsl:attribute>
-              <xsl:attribute name="route_id">
-                <xsl:value-of select="$rId"/>
-              </xsl:attribute>
-              <xsl:attribute name="route_short_name">
-                <xsl:value-of select="$short_name"/>
-              </xsl:attribute>
-              <xsl:attribute name="service_id">
-                <xsl:value-of select="@serviceType"/>
-              </xsl:attribute>
-              <xsl:attribute name="direction_id">
-                <xsl:value-of select="0"/>
-              </xsl:attribute>
-              <xsl:attribute name="beginStop">
-                <xsl:value-of select="@beginStop"/>
-              </xsl:attribute>
-              <xsl:attribute name="endStop">
-                <xsl:value-of select="@endStop"/>
-              </xsl:attribute>
-            </trip>
-          </xsl:if>
-          <xsl:if test="count(frequency[@dir='backward' or @dir='both']) != 0">
-            <xsl:variable name="beginStopAbbr">
-              <xsl:call-template name="abbreviateStop">
-                <xsl:with-param name="stopName" select="@beginStop"/>
-              </xsl:call-template>
-            </xsl:variable>
-              
-            <xsl:text>&#xA;  </xsl:text>
-            <trip>
-              <xsl:attribute name="trip_id">
-                <xsl:value-of
-                  select="concat($short_name, '_',
-                                 substring(@serviceType, 1, 3),
-                                 '_RET_', $beginStopAbbr)"/>
-              </xsl:attribute>
-              <xsl:attribute name="route_id">
-                <xsl:value-of select="$rId"/>
-              </xsl:attribute>
-              <xsl:attribute name="route_short_name">
-                <xsl:value-of select="$short_name"/>
-              </xsl:attribute>
-              <xsl:attribute name="service_id">
-                <xsl:value-of select="@serviceType"/>
-              </xsl:attribute>
-              <xsl:attribute name="direction_id">
-                <xsl:value-of select="1"/>
-              </xsl:attribute>
-              <xsl:attribute name="beginStop">
-                <xsl:value-of select="@beginStop"/>
-              </xsl:attribute>
-              <xsl:attribute name="endStop">
-                <xsl:value-of select="@endStop"/>
-              </xsl:attribute>
-            </trip>
-          </xsl:if>
-        </xsl:for-each>       
+            <xsl:comment>
+              <xsl:value-of select="$routeType"/>
+              <xsl:text> route </xsl:text>
+              <xsl:value-of select="$short_name"/>
+              <xsl:text> (frequencies.xml) not in OSM data (routes.xml).</xsl:text>
+            </xsl:comment>
+            <xsl:message>
+              <xsl:value-of select="$routeType"/>
+              <xsl:text> route </xsl:text>
+              <xsl:value-of select="$short_name"/>
+              <xsl:text> (frequencies.xml) not in OSM data (routes.xml).</xsl:text>
+            </xsl:message>
+          </xsl:when>
+          <xsl:otherwise>
+
+            <xsl:for-each select="service">
+              <xsl:if test="count(frequency[@dir='forward' or @dir='both']) != 0">
+                <xsl:variable name="endStopAbbr">
+                  <xsl:call-template name="abbreviateStop">
+                    <xsl:with-param name="stopName" select="@endStop"/>
+                  </xsl:call-template>
+                </xsl:variable>
+
+                <xsl:text>&#xA;  </xsl:text>
+                <trip>
+                  <xsl:attribute name="trip_id">
+                    <xsl:value-of
+                      select="concat($short_name, '_',
+                                     substring(@serviceType, 1, 3),
+                                     '_TUR_', $endStopAbbr)"/>
+                  </xsl:attribute>
+                  <xsl:attribute name="route_id">
+                    <xsl:value-of select="$rId"/>
+                  </xsl:attribute>
+                  <xsl:attribute name="route_short_name">
+                    <xsl:value-of select="$short_name"/>
+                  </xsl:attribute>
+                  <xsl:attribute name="service_id">
+                    <xsl:value-of select="@serviceType"/>
+                  </xsl:attribute>
+                  <xsl:attribute name="direction_id">
+                    <xsl:value-of select="0"/>
+                  </xsl:attribute>
+                  <xsl:attribute name="beginStop">
+                    <xsl:value-of select="@beginStop"/>
+                  </xsl:attribute>
+                  <xsl:attribute name="endStop">
+                    <xsl:value-of select="@endStop"/>
+                  </xsl:attribute>
+                </trip>
+              </xsl:if>
+              <xsl:if test="0 != count(frequency[@dir='backward' or
+                                                 @dir='both'])">
+                <xsl:variable name="beginStopAbbr">
+                  <xsl:call-template name="abbreviateStop">
+                    <xsl:with-param name="stopName" select="@beginStop"/>
+                  </xsl:call-template>
+                </xsl:variable>
+
+                <xsl:text>&#xA;  </xsl:text>
+                <trip>
+                  <xsl:attribute name="trip_id">
+                    <xsl:value-of
+                      select="concat($short_name, '_',
+                                     substring(@serviceType, 1, 3),
+                                     '_RET_', $beginStopAbbr)"/>
+                  </xsl:attribute>
+                  <xsl:attribute name="route_id">
+                    <xsl:value-of select="$rId"/>
+                  </xsl:attribute>
+                  <xsl:attribute name="route_short_name">
+                    <xsl:value-of select="$short_name"/>
+                  </xsl:attribute>
+                  <xsl:attribute name="service_id">
+                    <xsl:value-of select="@serviceType"/>
+                  </xsl:attribute>
+                  <xsl:attribute name="direction_id">
+                    <xsl:value-of select="1"/>
+                  </xsl:attribute>
+                  <xsl:attribute name="beginStop">
+                    <xsl:value-of select="@beginStop"/>
+                  </xsl:attribute>
+                  <xsl:attribute name="endStop">
+                    <xsl:value-of select="@endStop"/>
+                  </xsl:attribute>
+                </trip>
+              </xsl:if>
+            </xsl:for-each>       
+
+          </xsl:otherwise>
+        </xsl:choose>
       </xsl:for-each>
       <xsl:text>&#xA;</xsl:text>
     </trips>

@@ -115,32 +115,43 @@ INSTALLATION
       ant clean build
     should work.)
    
-5. Winstone server: Start local OpenTripPlanner
-     cd /otp
-     bin/start-server.sh
-     (control-C to stop)
-   Tomcat6 server:
-[ wrong --- does not work on kim.ciprian.name:
-   option B: Start Tomcat6 OpenTripPlanner
-     cd CATALINA_HOME
-     bin/startup.sh
-     (bin/shutdown.sh to stop)
-]
+5. (Re)Start local OpenTripPlanner
+
+    Winstone server started as application:
+      To stop (if started): 
+	control-C (in shell where Winstone was started)
+      To start:
+	cd ${otp.home.dir}
+	bin/start-server
+    Tomcat server started as application:
+      To stop (if started):
+	cd TOMCAT_HOME
+	bin/shutdown
+      To start:
+	cd TOMCAT_HOME
+	bin/startup
+    Tomcat server started as Unix daemon:
+      To start (if not running):
+	sudo /etc/init.d/tomcat6 start
+      To restart (if already running):
+	sudo /etc/init.d/tomcat6 restart
 
 6. Open web browser
      http://localhost:8080/opentripplanner-webapp/index.html
    This causes web server to unpack opentripplanner-webapp.war file.
 
-7. Winstone server: Stop OpenTripPlanner
-     control-C in window where bin/start-server.sh is running
-   Tomcat6 server:  Stop OpenTripPlanner
-[ wrong --- incorrect for kim.ciprian.name:
-     cd CATALINA_HOME
-     bin/shutdown.sh
-]       
+7. Stop OpenTripPlanner
+
+   Winstone server started as application: 
+     control-C in shell where bin/start-server.sh is running
+   Tomcat6 server started as application:
+     cd TOMCAT_HOME
+     bin/shutdown
+   Tomcat server started as Unix daemon:
+     sudo /etc/init.d/tomcat6 stop
 
 8. Patch index.html with JS script that converts English UI to SI units (m, km).
-   Winstone server:
+   Winstone server: (otp.home.dir/webapps)
      cd /otp/webapps/
      sudo patch -i ~/btp/src/main/otp/otp-webapp-englishToSIUnits.patch
    Tomcat6 server: (CATALINA_BASE/webapps)
