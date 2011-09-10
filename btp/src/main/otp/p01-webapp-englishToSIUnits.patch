@@ -1,9 +1,8 @@
---- opentripplanner-webapp/index.html
-+++ opentripplanner-webapp/index.html
-@@ -78,6 +78,23 @@
+--- a/opentripplanner-webapp/index.html
++++ b/opentripplanner-webapp/index.html
+@@ -78,5 +78,22 @@
      <script src="js/otp/application/Attribution.js"></script>
      <script src="js/otp/application/Controller.js"></script>
-     <script src="js/otp/config.js"></script>
 +    <script>
 +(function() {
 +  // convert English locale to SI units
@@ -21,6 +20,6 @@
 +    ];
 +}());
 +</script>
+     <script src="js/otp/config.js"></script>
  </head>
  
- <body>

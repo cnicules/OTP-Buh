@@ -1,0 +1,16 @@
+--- a/opentripplanner-webapp/index.html
++++ b/opentripplanner-webapp/index.html
+@@ -95,6 +95,13 @@
+ }());
+ </script>
+     <script src="js/otp/config.js"></script>
++    <script>
++(function() {
++  // Center map on downtown Bucarest, not entire region.
++  // (Zoom levels are limited; show enough street detail for first-time users.)
++  otp.config.map.defaultExtent = new OpenLayers.Bounds(26.05,44.39,26.15,44.47);
++}());
++</script>
+ </head>
+ 
+ <body>

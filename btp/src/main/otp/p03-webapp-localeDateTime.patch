@@ -1,0 +1,214 @@
+--- a/opentripplanner-webapp/js/otp/planner/Forms.js
++++ b/opentripplanner-webapp/js/otp/planner/Forms.js
+@@ -52,6 +52,8 @@
+ 
+     m_date           : null,
+     m_time           : null,
++    m_dateParam      : null,
++    m_timeParam      : null,
+     m_arriveByStore     : null,
+     m_arriveByForm      : null,
+ 
+@@ -183,9 +185,17 @@
+         this.hideErrorDialogs();
+ 
+         // step 3: fix up some of the form values before sending onto the trip planner web service
++        function reformatDateTime(jsDate, aFormat) {
++          return typeof(jsDate) == "object" ? jsDate.format(aFormat) : "";
++        }
+         form.setValues({
+             fromPlace: this.getFrom(),
+-            toPlace:   this.getTo()
++            toPlace:   this.getTo(),
++            // TODO: convert api to accept ISO8601 "Y-m-d", "H:i"
++            date:      reformatDateTime(this.m_date.getValue(), "m/d/Y"),
++            time:      reformatDateTime(Date.parseDate(this.m_time.getRawValue(),
++                                                       this.locale.time.timeFormat),
++                                        "g:i a")
+         });
+     },
+ 
+@@ -1133,15 +1143,26 @@
+      */
+     makeDateTime : function()
+     {
++        if (!this.locale.time.dateFormat || !this.locale.time.timeFormat) {
++          var formatString = this.locale.time.format || "Y-n-j @ H:i";
++          var formatsArray = formatString.split(/\s*@\s*/);
++          if (!this.locale.time.dateFormat) {
++            this.locale.time.dateFormat = formatsArray[0] || "Y-n-j";//IntlYMD
++          }
++          if (!this.locale.time.timeFormat) {
++            this.locale.time.timeFormat = formatsArray[1] || "H:i";    //Intl24h
++          }
++        }
++        this.m_dateParam = new Ext.form.Hidden({name: 'date', value: ''});
+         this.m_date = new Ext.form.DateField({
+-            id:         'trip-date-form',
++            //id:         'trip-date-form',
++            //name:       'rawDate',
+             fieldLabel: this.locale.tripPlanner.labels.date,
+-            name:       'date',
+-            format:     'm/d/Y',
++            format:     this.locale.time.dateFormat,
+             allowBlank: false,
+             msgTarget:  'qtip',
+             anchor:     "95%",
+-            value:      new Date().format('m/d/Y')
++            value:      new Date().format(this.locale.time.dateFormat)
+         });
+ 
+         this.m_arriveByStore = otp.util.ExtUtils.makeStaticPullDownStore(this.locale.tripPlanner.arriveDepart);
+@@ -1165,15 +1186,17 @@
+                 selectOnFocus:  true
+         });
+ 
++        this.m_timeParam = new Ext.form.Hidden({name: 'time', value: ''});
+         this.m_time = new Ext.ux.form.Spinner({
+-                id         : 'trip-time-form',
++                //id         : 'trip-time-form',
++                //name       : 'rawTime'
+                 fieldLabel : this.locale.tripPlanner.labels.when,
+                 accelerate : true,
+                 width      : 85,
+                 msgTarget  : 'qtip',
+-                value      : new Date().format('g:i a'),
+-                strategy   : new Ext.ux.form.Spinner.TimeStrategy({format:'g:i a'}),
+-                name       : 'time'
++                value      : new Date().format(this.locale.time.timeFormat),
++                strategy   : new Ext.ux.form.Spinner.TimeStrategy({
++                                        format: this.locale.time.timeFormat})
+         });
+ 
+         var timePanel = {
+@@ -1193,7 +1216,7 @@
+                     columnWidth: 0.33,
+                     layout: 'anchor',
+                     border: false,
+-                    items: [this.m_date]
++                    items: [this.m_date, this.m_dateParam]
+                 }
+                 ,
+                 {
+@@ -1201,7 +1224,7 @@
+                     layout: 'anchor',
+                     border: false,
+                     //labelWidth: 5,
+-                    items: [this.m_time]
++                    items: [this.m_time, this.m_timeParam]
+                 }
+             ]
+         };
+--- a/opentripplanner-webapp/js/otp/planner/TripTab.js
++++ b/opentripplanner-webapp/js/otp/planner/TripTab.js
+@@ -272,7 +272,7 @@
+ 
+         if(this.m_activeItinerary && this.m_activeItinerary.m_endTime)
+         {
+-            rev.time = this.m_activeItinerary.m_endTime.format("g:i a");
++            rev.time = this.m_activeItinerary.m_endTime.format(this.locale.time.timeFormat);
+             rev.arriveBy  = false; // when setting time for a reverse trip, always set plan
+         }
+ 
+--- a/opentripplanner-webapp/js/otp/planner/Templates.js
++++ b/opentripplanner-webapp/js/otp/planner/Templates.js
+@@ -39,6 +39,7 @@
+     TP_WALK_LEG         : null,
+     TP_CAR_LEG          : null,
+ 
++    templateOptions     : null,
+     tripFeedbackDetails : null,
+     tripPrintTemplate   : null,
+ 
+@@ -48,10 +49,23 @@
+         otp.planner.Templates.THIS   = this;
+         otp.planner.Templates.locale = this.locale;
+ 
++        if (this.templateOptions == null) { 
++          this.templateOptions = {
++            compiled: true,
++            locale: this.locale,
++            dateTime: function dateTime(jsDate) {
++              return jsDate.format(this.locale.time.format);
++            },
++            time: function time(jsDate) {
++              return jsDate.format(this.locale.time.timeFormat);
++            }
++          };
++        }
++
+         if(this.TP_ITINERARY == null)
+             this.TP_ITINERARY = new Ext.XTemplate(
+                   '<p><a href="#">{id}</a>: ',
+-                  ' {startTimeDisplay} - {endTimeDisplay} ',
++                  ' {[this.dateTime(values.startTime)]} &ndash; {[this.dateTime(values.endTime)]} ',
+                   '<tpl if="numTransfers">',
+                     '<br/><span class="transfers">',
+                     '({numTransfers} ',
+@@ -60,7 +74,8 @@
+                     ', {duration} ' + this.getDurationTemplateString(),
+                     ')</span>',
+                   '</tpl>',
+-                  '</p>'
++                  '</p>',
++                  this.templateOptions
+             ).compile();
+ 
+         if(this.tripFeedbackDetails == null)
+@@ -80,11 +95,12 @@
+                 '<h1>' + this.locale.labels.trip_details + ':</h1>',
+                 '<table cellpadding="3" cellspacing="0" border="0">',
+                     '<tpl if="regularFare != null"><tr><td>' + this.locale.labels.fare + '</td><td>{regularFare}</td></tr></tpl>',
+-                      '<tr><td>' + this.locale.labels.travel      + '</td><td>{startTimeDisplay}</td></tr>',
++                      '<tr><td>' + this.locale.labels.travel      + '</td><td>{[this.dateTime(values.startTime)]}</td></tr>',
+                       '<tr><td>' + this.locale.labels.valid       + '</td><td>{[new Date().format("' + this.locale.time.format + '")]}</td></tr>',
+                       '<tr><td>' + this.locale.labels.trip_length + '</td><td>{duration} ' + this.getDurationTemplateString() + '</td></tr>',
+                     '<tpl if="walkDistance"><tr><td>{distanceVerb}</td><td>{walkDistance}</td></tr></tpl>',
+-                '</table></div>'
++                '</table></div>',
++                this.templateOptions
+             ).compile();
+ 
+         if(this.TP_LEG_MODE == null)
+@@ -95,12 +111,12 @@
+ 
+         if(this.TP_LEG_BASE_STR == null)
+             this.TP_LEG_BASE_STR = ''
+-                + '<p><b>{startTimeDisplayShort}</b> ' + this.locale.instructions.depart + ' {fromName}'
++                + '<p><b>{[this.time(values.startTime)]}</b> ' + this.locale.instructions.depart + ' {fromName}'
+                 + '<tpl if="headsign != null && headsign.length &gt; 0"> ({headsign})</tpl>'
+                 + '<tpl if="fromStopId != null && fromStopId.length &gt; 0 && showStopIds"><br/>' + this.locale.labels.stop_id + ' {fromStopId}</tpl>'
+                 + '</p>'
+                 + '<tpl if="duration != null"><div class="duration">{duration} ' + this.getDurationTemplateString() + '</div></tpl>'
+-                + '<p><b>{endTimeDisplayShort}</b> ' + this.locale.instructions.arrive + ' {toName}'
++                + '<p><b>{[this.time(values.endTime)]}</b> ' + this.locale.instructions.arrive + ' {toName}'
+                 + '<tpl if="toStopId != null && toStopId.length &gt; 0 && showStopIds"><br/>' + this.locale.labels.stop_id + ' {toStopId}</tpl>'
+                 + '</p>'
+                 + '<tpl if="alerts != null && alerts.length &gt; 0">'
+@@ -160,7 +176,8 @@
+     getTransitLeg : function()
+     {
+         if (this.m_transitLeg == null)
+-            this.m_transitLeg = new Ext.XTemplate(this.TP_LEG_MODE + this.TP_LEG_BASE_STR).compile();
++            this.m_transitLeg = new Ext.XTemplate(this.TP_LEG_MODE + this.TP_LEG_BASE_STR,
++                                                  this.templateOptions).compile();
+ 
+         return this.m_transitLeg;
+     },
+@@ -169,7 +186,8 @@
+     getInterlineLeg : function()
+     {
+         if (this.m_interlineLeg == null)
+-            this.m_interlineLeg = new Ext.XTemplate(this.TP_LEG_CONTINUES + this.TP_LEG_BASE_STR).compile();
++            this.m_interlineLeg = new Ext.XTemplate(this.TP_LEG_CONTINUES + this.TP_LEG_BASE_STR,
++                                                    this.templateOptions).compile();
+ 
+         return this.m_interlineLeg;
+     },
+@@ -177,4 +195,4 @@
+     CLASS_NAME: "otp.planner.Templates"
+ };
+ 
+-otp.planner.Templates = new otp.Class(otp.planner.Templates);
+\ No newline at end of file
++otp.planner.Templates = new otp.Class(otp.planner.Templates);

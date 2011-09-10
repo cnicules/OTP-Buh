@@ -73,7 +73,8 @@
     <tstamp><format property="todayYMD" pattern="yyyyMMdd"/></tstamp>
   </target>
 
-  <target name="zip-sources" depends="datestamp">
+  <target name="zip-sources" depends="datestamp"
+    description="Zip source code to target/btp-YMD-VER-sources.zip">
     <property name="btp.zip"
       value="${target.dir}/${product.abbr}-${todayYMD}-${product.version}-sources.zip"/>
     <outofdate>

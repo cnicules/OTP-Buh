@@ -151,12 +151,19 @@ INSTALLATION
      sudo /etc/init.d/tomcat6 stop
 
 8. Patch index.html with JS script that converts English UI to SI units (m, km).
+   Patch index.html with JS script that sets defaultExtent to downtown Bucarest.
    Winstone server: (otp.home.dir/webapps)
      cd /otp/webapps/
-     sudo patch -i ~/btp/src/main/otp/otp-webapp-englishToSIUnits.patch
+     sudo patch -l -p 1 -i ~/btp/src/main/otp/p01-webapp-englishToSIUnits.patch
+     sudo patch -l -p 1 -i ~/btp/src/main/otp/p02-webapp-mapDefaultExtent.patch
+     sudo patch -l -p 1 -i ~/btp/src/main/otp/p03-webapp-localeDateTime.patch
+     sudo patch -l -p 1 -i ~/btp/src/main/otp/p04-webapp-englishIntlTime.patch
+
    Tomcat6 server: (CATALINA_BASE/webapps)
      cd /var/lib/tomcat6/webapps/
-     sudo patch -i ~/btp/src/main/otp/otp-webapp-englishToSIUnits.patch
+     sudo patch -l -p 1 -i ~/btp/src/main/otp/p01-webapp-englishToSIUnits.patch
+     sudo patch -l -p 1 -i ~/btp/src/main/otp/p02-webapp-mapDefaultExtent.patch
+     sudo patch -l -p 1 -i ~/btp/src/main/otp/p03-webapp-localeDateTime.patch
+     sudo patch -l -p 1 -i ~/btp/src/main/otp/p04-webapp-englishIntlTime.patch
 
-8. Restart OpenTripPlanner (see step 5).
-
+9. Restart OpenTripPlanner (see step 5).

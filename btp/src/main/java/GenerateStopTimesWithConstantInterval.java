@@ -12,6 +12,7 @@ import java.text.CollationKey;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Locale;
@@ -467,10 +468,10 @@ public class GenerateStopTimesWithConstantInterval {
    * <li>If a schedule stop name matches one stop on the map route,
    *   use that stop.
    * <li>If a schedule stop name matches more than one stop on the map route,
-   *   pick one (the first). 
+   *   pick one (the closest to latest stop, or first if no latest stop). 
    * <li>If a name is not found on the given map route but is on another route
    *   with the same route type, substitute one of the other stops
-   *   (the first).
+   *   (the closest to latest stop, or first if no latest stop).
    * <li>If a name is not found on any route, substitute the latest stop if
    *   possible, otherwise the next stop.
    * </ul>
@@ -545,11 +546,21 @@ public class GenerateStopTimesWithConstantInterval {
               latestNonNullStop = intersection.iterator().next();
               seqStops.add(latestNonNullStop); // found it
             } else if (intersection.size() > 1) {
-              LOG.warning("map "+this.routeType+" "+routeName+
-                          " has "+intersection.size()+
-                          " \""+name+"\" stops;"+
-                          " taking first for now: "+intersection);
-              latestNonNullStop = intersection.iterator().next();  // take first
+              if (latestNonNullStop == null) { 
+                LOG.warning("map "+this.routeType+" "+routeName+
+                            " has "+intersection.size()+
+                            " \""+name+"\" stops;"+
+                            " taking first for now: "+intersection);
+                latestNonNullStop = intersection.iterator().next(); //take first
+              } else {
+                Stop closestStop =
+                  selectClosestStop(latestNonNullStop, intersection);
+                LOG.warning("map "+this.routeType+" "+routeName+
+                            " has "+intersection.size()+
+                            " \""+name+"\" stops;"+
+                            " taking closest for now: "+closestStop);
+                latestNonNullStop = closestStop;
+              }
               seqStops.add(latestNonNullStop); 
               ++stopDupCount;
             } else {
@@ -566,18 +577,25 @@ public class GenerateStopTimesWithConstantInterval {
                 ++sameNameStopSubstCount;
                 schedStopsSubstFromOtherRoute.add(latestNonNullStop);
               } else {
-                // future: maybe try to use 'closest' stop.
-                // But may not be worth effort.
-                // May take multiple passes.
-                // May be hard if multiple stops are missing.
-                // Clearly bad routes encourage map fixes?
-                latestNonNullStop = namedStops.iterator().next();
-                LOG.fine
-                  ("map "+this.routeType+" "+routeName+
-                   " has no stop \""+name+"\" and "+
-                   namedStops.size()+" stops have that name"+
-                   " on other "+this.routeType+" route(s); "+
-                   "substituting first for now: "+ namedStops);
+                if (latestNonNullStop == null) { 
+                  latestNonNullStop = namedStops.iterator().next();
+                  LOG.fine
+                    ("map "+this.routeType+" "+routeName+
+                     " has no stop \""+name+"\" and "+
+                     namedStops.size()+" stops have that name"+
+                     " on other "+this.routeType+" route(s); "+
+                     "substituting first for now: "+ namedStops);
+                } else {
+                  Stop closestStop =
+                    selectClosestStop(latestNonNullStop, namedStops);
+                  LOG.fine
+                    ("map "+this.routeType+" "+routeName+
+                     " has no stop \""+name+"\" and "+
+                     namedStops.size()+" stops have that name"+
+                     " on other "+this.routeType+" route(s); "+
+                     "substituting closest for now: "+ closestStop);
+                  latestNonNullStop = closestStop;
+                }
                 seqStops.add(latestNonNullStop);
                 ++sameNameStopSubstCount;
                 schedStopsSubstFromOtherRoute.add(latestNonNullStop);
@@ -694,6 +712,20 @@ public class GenerateStopTimesWithConstantInterval {
     return summary.length() == emptyLength ? "" : summary.toString();
   }
 
+  private Stop selectClosestStop(Stop latestStop, Set<Stop> candidates) {
+    assert !candidates.isEmpty();
+    Iterator<Stop> iterator = candidates.iterator();
+    Stop closestStopYet = null;
+    double closestDistanceYet = Double.POSITIVE_INFINITY;
+    for (Stop candidateStop : candidates) { 
+      double candidateDistance = latestStop.distance_m(candidateStop);
+      if (candidateDistance < closestDistanceYet) {
+        closestStopYet = candidateStop;
+        closestDistanceYet = candidateDistance;
+      }
+    }
+    return closestStopYet;
+  }
 
   private Element selectElement(File xmlFile, String xpathExpression) {
     try { 

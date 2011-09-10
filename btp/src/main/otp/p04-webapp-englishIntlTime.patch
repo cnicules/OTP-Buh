@@ -1,0 +1,11 @@
+--- a/opentripplanner-webapp/index.html
++++ b/opentripplanner-webapp/index.html
+@@ -93,6 +93,8 @@
+      ['10000',  '10 km'],
+      ['20000',  '20 km']
+     ];
++  // convert English locale to "weekdayAbbrev DoM monthAbbrev" date, 24hr time
++  otp.locale.English.time.format = "D j M @ H:i";
+ }());
+ </script>
+     <script src="js/otp/config.js"></script>
