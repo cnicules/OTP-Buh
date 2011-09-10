@@ -150,8 +150,9 @@ public class GenerateStopTimesWithConstantInterval {
     new LinkedHashMap<String, Set<Stop>>();
   private final XPath xpath = XPathFactory.newInstance().newXPath();
 
-  /* (route:(service:list<stopSeq>)), where stopSeq is list<stop>
-     May be multiple partial trips or local/express trips on a route. */
+  /** {route:{dir:List<stopSeq>}}, where stopSeq is List<stop>.
+      dir is "forward" or "backward".
+      There may be multiple partial trips or local/express trips on a route. **/
   private Map<String, Map<String, List<List<Stop>>>> stopsFromSched =
     new LinkedHashMap<String, Map<String, List<List<Stop>>>>();
 
@@ -481,11 +482,7 @@ public class GenerateStopTimesWithConstantInterval {
    */
   protected void locateScheduledStops() {
     this.stopsFromSched.clear();
-    int routeSkipCount = 0, seqSkipCount = 0;
-    int missingStopCount = 0;
-    int sameNameStopSubstCount = 0;
-    int stopDupCount = 0;
-
+    LoggedStopCounts counts = new LoggedStopCounts();
     NodeList schedRouteNodeList =
       selectElements(this.stopSeqsXml, "/stop-sequences/route");
     for (int i = 0; i < schedRouteNodeList.getLength(); i++) {
@@ -498,181 +495,251 @@ public class GenerateStopTimesWithConstantInterval {
       }
 
       // may be multiple partial or local/express trips on a route
-      Map<String, List<List<Stop>>> sequenceStopsMap =
+      Map<String, List<List<Stop>>> seqStopsMap =
         this.stopsFromSched.get(routeName);
-      if (sequenceStopsMap == null) {
-        sequenceStopsMap = new TreeMap<String, List<List<Stop>>>();
-        this.stopsFromSched.put(routeName, sequenceStopsMap);
+      if (seqStopsMap == null) {
+        seqStopsMap = new TreeMap<String, List<List<Stop>>>();
+        this.stopsFromSched.put(routeName, seqStopsMap);
       }
 
-      NodeList sequenceNodeList =
-        selectElements(schedRouteElement, "stop-sequence");
-      for (int j = 0; j < sequenceNodeList.getLength(); j++) {
-        Element sequenceElement = (Element) sequenceNodeList.item(j);
-        String dir = sequenceElement.getAttribute("dir");
-        List<Stop> seqStops = new ArrayList<Stop>();
+      locateSchedRouteStops(schedRouteElement, routeName, routeStops,
+                            seqStopsMap, counts);
 
-        List<String> schedStopNamesUnmatched = new ArrayList<String>();
-        List<Stop> schedStopsSubstFromOtherRoute = new ArrayList<Stop>();
-
-        Stop latestNonNullStop = null;
-        NodeList schedStopNodeList =
-          selectElements(sequenceElement, "stop");
-        for (int k = 0; k < schedStopNodeList.getLength(); k++) {
-          Element schedStopElement = (Element) schedStopNodeList.item(k);
-          // check if same name is on route
-          String name = schedStopElement.getAttribute("name");
-          Set<Stop> namedStops = stopsFromName.get(name);
-          if (namedStops == null || namedStops.isEmpty()) {
-            ++missingStopCount;
-            schedStopNamesUnmatched.add(name);
-            if (latestNonNullStop != null) { 
-              LOG.fine
-                ("scheduled "+this.routeType+ " "+routeName+
-                 " stop \""+name+"\" not in map "+this.routeType+" routes;"+
-                 " substituting latest stop "+latestNonNullStop);
-              seqStops.add(latestNonNullStop);
-            } else {
-              LOG.fine
-                ("scheduled "+this.routeType+ " "+routeName+
-                 " stop \""+name+"\" not in map "+this.routeType+" routes;"+
-                 " will substitute next non-null stop.");
-              seqStops.add(null);
-            }
-          } else {
-            Set<Stop> intersection = new TreeSet<Stop>(namedStops);
-            intersection.retainAll(routeStops);
-            if (intersection.size() == 1) {
-              latestNonNullStop = intersection.iterator().next();
-              seqStops.add(latestNonNullStop); // found it
-            } else if (intersection.size() > 1) {
-              if (latestNonNullStop == null) { 
-                LOG.warning("map "+this.routeType+" "+routeName+
-                            " has "+intersection.size()+
-                            " \""+name+"\" stops;"+
-                            " taking first for now: "+intersection);
-                latestNonNullStop = intersection.iterator().next(); //take first
-              } else {
-                Stop closestStop =
-                  selectClosestStop(latestNonNullStop, intersection);
-                LOG.warning("map "+this.routeType+" "+routeName+
-                            " has "+intersection.size()+
-                            " \""+name+"\" stops;"+
-                            " taking closest for now: "+closestStop);
-                latestNonNullStop = closestStop;
-              }
-              seqStops.add(latestNonNullStop); 
-              ++stopDupCount;
-            } else {
-              assert intersection.size() == 0;
-              if (namedStops.size() == 1) {
-                latestNonNullStop = namedStops.iterator().next();
-                LOG.fine
-                  ("map "+this.routeType+" route "+routeName+
-                   " has no stop \""+name+
-                   "\"; substituting stop with same name "+
-                   "from another "+this.routeType+" route: "+
-                   latestNonNullStop);
-                seqStops.add(latestNonNullStop);
-                ++sameNameStopSubstCount;
-                schedStopsSubstFromOtherRoute.add(latestNonNullStop);
-              } else {
-                if (latestNonNullStop == null) { 
-                  latestNonNullStop = namedStops.iterator().next();
-                  LOG.fine
-                    ("map "+this.routeType+" "+routeName+
-                     " has no stop \""+name+"\" and "+
-                     namedStops.size()+" stops have that name"+
-                     " on other "+this.routeType+" route(s); "+
-                     "substituting first for now: "+ namedStops);
-                } else {
-                  Stop closestStop =
-                    selectClosestStop(latestNonNullStop, namedStops);
-                  LOG.fine
-                    ("map "+this.routeType+" "+routeName+
-                     " has no stop \""+name+"\" and "+
-                     namedStops.size()+" stops have that name"+
-                     " on other "+this.routeType+" route(s); "+
-                     "substituting closest for now: "+ closestStop);
-                  latestNonNullStop = closestStop;
-                }
-                seqStops.add(latestNonNullStop);
-                ++sameNameStopSubstCount;
-                schedStopsSubstFromOtherRoute.add(latestNonNullStop);
-              }
-            }
-            assert latestNonNullStop != null;
-            assert seqStops.size() == k + 1;
-            assert seqStops.get(k) != null;
-            // fill in prior nulls with next nonNull
-            for (int p = k - 1; p >= 0; p--) {
-              if (seqStops.get(p) == null) {
-                seqStops.set(p, latestNonNullStop);
-              } else break;
-            }
-          }
-          
-        }
-        Set<Stop> mapRouteStopsUnmatched = new LinkedHashSet<Stop>(routeStops);
-        mapRouteStopsUnmatched.removeAll(seqStops);
-
-        String summary = makeTripSummary(routeName, dir,
-                                         schedStopNamesUnmatched,
-                                         schedStopsSubstFromOtherRoute,
-                                         mapRouteStopsUnmatched);
-        if (latestNonNullStop == null) {
-          LOG.severe(this.routeType+" route "+routeName+
-                     " direction "+dir+" has no located stops.");
-          // do not add to sequenceStopsMap.
-          ++seqSkipCount;
-        } else {
-          assert !seqStops.contains(null);
-          if (new TreeSet<Stop>(seqStops).size() < 2) {
-            LOG.severe(this.routeType+" route "+routeName+" direction "+dir+
-                       " has less than 2 located stops.");
-            // do not add to sequenceStopsMap.
-            ++seqSkipCount;
-          } else /* has at least two located stops */ {
-            if (!schedStopNamesUnmatched.isEmpty()) {
-              LOG.severe(summary);
-            } else if (summary.length() > 0) {
-              LOG.warning(summary);
-            }
-            List<List<Stop>> tripsStopSeqs = sequenceStopsMap.get(dir);
-            if (tripsStopSeqs == null) {
-              tripsStopSeqs = new ArrayList<List<Stop>>(1);
-              sequenceStopsMap.put(dir, tripsStopSeqs);
-            }
-            tripsStopSeqs.add(seqStops);
-          }
-        }
-      }
-      if (sequenceStopsMap.isEmpty()) {
+      if (seqStopsMap.isEmpty()) {
         LOG.severe(this.routeType+" route "+routeName+" has no located stops.");
         // do not add to stopsFromSched.
-        ++routeSkipCount;
+        counts.routeSkipCount++;
       } else {
-        this.stopsFromSched.put(routeName, sequenceStopsMap);
+        this.stopsFromSched.put(routeName, seqStopsMap);
       }
     }
-    if (routeSkipCount > 0)
-      LOG.info(routeSkipCount+" "+this.routeType+" routes skipped.");
-    if (seqSkipCount > 0)
-      LOG.info(seqSkipCount+ " "+this.routeType+
+    // log summary counts
+    if (counts.routeSkipCount > 0)
+      LOG.info(counts.routeSkipCount+" "+this.routeType+" routes skipped.");
+    if (counts.seqSkipCount > 0)
+      LOG.info(counts.seqSkipCount+ " "+this.routeType+
                " route direction sequences skipped.");
-    if (missingStopCount > 0)
-      LOG.info(missingStopCount+" scheduled stop names missing "+
+    if (counts.missingStopCount > 0)
+      LOG.info(counts.missingStopCount+" scheduled stop names missing "+
                "(or spelled differently) from all map "+
                this.routeType+" routes.");
-    if (sameNameStopSubstCount > 0)
+    if (counts.sameNameStopSubstCount > 0)
       LOG.info
-        (sameNameStopSubstCount+
+        (counts.sameNameStopSubstCount+
          " scheduled stops substituted with stop with same name"+
          " from another "+this.routeType+" route.");
-    if (stopDupCount > 0)
-      LOG.info(stopDupCount+" ambiguous/duplicate stops from all "+
+    if (counts.stopDupCount > 0)
+      LOG.info(counts.stopDupCount+" ambiguous/duplicate stops from all "+
                this.routeType+" routes.");
+    if (counts.notBetweenNeighborsCount > 0)
+      LOG.info(counts.notBetweenNeighborsCount +
+               " stops are further from neighbors than distance between them: "+
+               "min(a-b, b-c) > a-c");
   }
+  private void locateSchedRouteStops(Element schedRouteElement, 
+                                     String routeName, Set<Stop> routeStops,
+                                     Map<String, List<List<Stop>>> seqStopsMap,
+                                     LoggedStopCounts counts){
+    // stop-sequences/route/stop-sequence
+    NodeList sequenceNodeList =
+      selectElements(schedRouteElement, "stop-sequence");
+    for (int j = 0; j < sequenceNodeList.getLength(); j++) {
+      Element sequenceElement = (Element) sequenceNodeList.item(j);
+      String dir = sequenceElement.getAttribute("dir");
+
+      List<Stop> seqStops = new ArrayList<Stop>();
+      List<String> schedStopNamesUnmatched = new ArrayList<String>();
+      List<Stop> schedStopsSubstFromOtherRoute = new ArrayList<Stop>();
+
+      locateSchedRouteSeqStops(sequenceElement, routeName, routeStops,
+                               seqStops,
+                               schedStopNamesUnmatched,
+                               schedStopsSubstFromOtherRoute, counts);
+      // analyze result
+      //
+      // for each triple of adjacent stops,
+      // warn if middle is further from its neighbors
+      // than distance between its neighbors.
+      if (seqStops.size() > 2 && seqStops.get(0) != null) { 
+        for (int p = 1; p < seqStops.size() - 1; p++) {
+          Stop a = seqStops.get(p - 1);
+          Stop b = seqStops.get(p);
+          Stop c = seqStops.get(p + 1);
+          double ab = a.distance_m(b);
+          double bc = b.distance_m(c);
+          double ac = a.distance_m(c);
+          if (ab > ac || bc > bc) {
+            LOG.warning
+              (this.routeType+ " "+routeName+" "+dir+
+               " stop "+p+" \""+b.getName()+"\""+
+               " is further from neighbors than distance between them: "+ b);
+            counts.notBetweenNeighborsCount++;
+          }
+        }
+      }
+      Set<Stop> mapRouteStopsUnmatched = new LinkedHashSet<Stop>(routeStops);
+      mapRouteStopsUnmatched.removeAll(seqStops);
+
+      String summary = makeTripSummary(routeName, dir,
+                                       schedStopNamesUnmatched,
+                                       schedStopsSubstFromOtherRoute,
+                                       mapRouteStopsUnmatched);
+      if (seqStops.isEmpty() || seqStops.get(0) == null) { 
+        // null would be replaced with later stop if there is one.
+        LOG.severe(this.routeType+" route "+routeName+
+                   " direction "+dir+" has no located stops.");
+        // do not add to seqStopsMap.
+        counts.seqSkipCount++;
+      } else {
+        assert !seqStops.contains(null);
+        if (new TreeSet<Stop>(seqStops).size() < 2) {
+          LOG.severe(this.routeType+" route "+routeName+" direction "+dir+
+                     " has less than 2 located stops.");
+          // do not add to seqStopsMap.
+          counts.seqSkipCount++;
+        } else /* has at least two located stops */ {
+          if (!schedStopNamesUnmatched.isEmpty()) {
+            LOG.severe(summary);
+          } else if (summary.length() > 0) {
+            LOG.warning(summary);
+          }
+          List<List<Stop>> tripsStopSeqs = seqStopsMap.get(dir);
+          if (tripsStopSeqs == null) {
+            tripsStopSeqs = new ArrayList<List<Stop>>(1);
+            seqStopsMap.put(dir, tripsStopSeqs);
+          }
+          tripsStopSeqs.add(seqStops);
+        }
+      }
+    }
+  }
+  private void locateSchedRouteSeqStops(Element sequenceElement,
+                                        String routeName, Set<Stop> routeStops,
+                                        List<Stop> seqStops,
+                                        List<String> schedStopNamesUnmatched,
+                                        List<Stop>
+                                        schedStopsSubstFromOtherRoute,
+                                        LoggedStopCounts counts) {
+    Stop latestNonNullStop = null;
+    NodeList schedStopNodeList =
+      selectElements(sequenceElement, "stop");
+    for (int k = 0; k < schedStopNodeList.getLength(); k++) {
+      Element schedStopElement = (Element) schedStopNodeList.item(k);
+      // check if same name is on route
+      String name = schedStopElement.getAttribute("name");
+      Set<Stop> namedStops = stopsFromName.get(name);
+      if (namedStops == null || namedStops.isEmpty()) { // no stops have name
+        categorizeMissingStop(routeName, name, latestNonNullStop,
+                              seqStops, schedStopNamesUnmatched, counts);
+      } else {
+        Set<Stop> intersection = new TreeSet<Stop>(namedStops);
+        intersection.retainAll(routeStops);
+        if (intersection.size() == 1) {        // found unique match, so use it
+          latestNonNullStop = intersection.iterator().next();
+          seqStops.add(latestNonNullStop);
+        } else if (intersection.size() > 1) {  // > 1 stops in route have name
+          latestNonNullStop = chooseRouteDupStop(routeName, name, intersection,
+                                                 latestNonNullStop, seqStops,
+                                                 counts);
+        } else {
+          assert intersection.size() == 0;     // no ROUTE stops have name
+          latestNonNullStop = chooseOffRouteStop(routeName, name, namedStops,
+                                                 latestNonNullStop, seqStops,
+                                                 schedStopsSubstFromOtherRoute,
+                                                 counts);
+        }
+        assert latestNonNullStop != null;
+        assert seqStops.size() == k + 1;
+        assert seqStops.get(k) != null;
+        // fill in prior nulls with next nonNull
+        for (int p = k - 1; p >= 0; p--) {
+          if (seqStops.get(p) == null) {
+            seqStops.set(p, latestNonNullStop);
+          } else break;
+        }
+      }
+    }
+  }
+  private void categorizeMissingStop(String routeName, String name,
+                                     Stop latestNonNullStop,
+                                     List<Stop> seqStops,
+                                     List<String> schedStopNamesUnmatched,
+                                     LoggedStopCounts counts) {
+    counts.missingStopCount++;
+    schedStopNamesUnmatched.add(name);
+    if (latestNonNullStop != null) { 
+      LOG.fine("scheduled "+this.routeType+ " "+routeName+
+               " stop \""+name+"\" not in map "+this.routeType+" routes;"+
+               " substituting latest stop "+latestNonNullStop);
+      seqStops.add(latestNonNullStop);
+    } else {
+      LOG.fine("scheduled "+this.routeType+ " "+routeName+
+               " stop \""+name+"\" not in map "+this.routeType+" routes;"+
+               " will substitute next non-null stop.");
+      seqStops.add(null);
+    }
+  }
+  private Stop chooseRouteDupStop(String routeName, String name,
+                                  Set<Stop> intersection,
+                                  Stop latestNonNullStop, List<Stop> seqStops,
+                                  LoggedStopCounts counts){
+    assert intersection.size() > 1;
+    if (latestNonNullStop == null) { 
+      LOG.warning("map "+this.routeType+" "+routeName+
+                  " has "+intersection.size()+ " \""+name+"\" stops;"+
+                  " taking first for now: "+intersection);
+      latestNonNullStop = intersection.iterator().next(); //take first
+    } else {
+      Stop closestStop =
+        selectClosestStop(latestNonNullStop, intersection);
+      LOG.warning("map "+this.routeType+" "+routeName+
+                  " has "+intersection.size()+ " \""+name+"\" stops;"+
+                  " taking closest for now: "+closestStop);
+      latestNonNullStop = closestStop;
+    }
+    seqStops.add(latestNonNullStop); 
+    counts.stopDupCount++;
+    return latestNonNullStop;
+  }
+                                            
+  private Stop chooseOffRouteStop(String routeName, String name,
+                                  Set<Stop> namedStops,
+                                  Stop latestNonNullStop, List<Stop> seqStops,
+                                  List<Stop> schedStopsSubstFromOtherRoute,
+                                  LoggedStopCounts counts){
+    if (namedStops.size() == 1) {
+      latestNonNullStop = namedStops.iterator().next();
+      LOG.fine("map "+this.routeType+" route "+routeName+" has no stop \""+name+
+               "\"; substituting stop with same name "+
+               "from another "+this.routeType+" route: "+ latestNonNullStop);
+      seqStops.add(latestNonNullStop);
+      counts.sameNameStopSubstCount++;
+      schedStopsSubstFromOtherRoute.add(latestNonNullStop);
+    } else {
+      if (latestNonNullStop == null) { 
+        latestNonNullStop = namedStops.iterator().next();
+        LOG.fine("map "+this.routeType+" "+routeName+
+                 " has no stop \""+name+"\" and "+
+                 namedStops.size()+" stops have that name"+
+                 " on other "+this.routeType+" route(s); "+
+                 "substituting first for now: "+ namedStops);
+      } else {
+        Stop closestStop =
+          selectClosestStop(latestNonNullStop, namedStops);
+        LOG.fine("map "+this.routeType+" "+routeName+
+                 " has no stop \""+name+"\" and "+
+                 namedStops.size()+" stops have that name"+
+                 " on other "+this.routeType+" route(s); "+
+                 "substituting closest for now: "+ closestStop);
+        latestNonNullStop = closestStop;
+      }
+      seqStops.add(latestNonNullStop);
+      counts.sameNameStopSubstCount++;
+      schedStopsSubstFromOtherRoute.add(latestNonNullStop);
+    }
+    return latestNonNullStop;
+  }
+
   private String makeTripSummary(String routeName, String dir, 
                                  List<String> schedStopNamesUnmatched,
                                  List<Stop> schedStopsSubstFromOtherRoute,
@@ -750,6 +817,13 @@ public class GenerateStopTimesWithConstantInterval {
                        contextNode,
                        XPathConstants.NODESET);
     } catch (XPathExpressionException ex) { throw new Error(ex); }
+  }
+  private class LoggedStopCounts {
+    int routeSkipCount = 0, seqSkipCount = 0;
+    int missingStopCount = 0;
+    int sameNameStopSubstCount = 0;
+    int stopDupCount = 0;
+    int notBetweenNeighborsCount = 0;
   }
     
   /**

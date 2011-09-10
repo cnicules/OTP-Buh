@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<osm version="0.6">
+ <node id="582975264" lat="44.4428180" lon="26.0599159" user="Strainu" uid="126538" visible="true" version="4" changeset="5512152" timestamp="2010-08-16T19:31:34Z">
+  <tag k="name" v="Grozăvești"/>
+  <tag k="railway" v="station"/>
+  <tag k="wikipedia" v="ro:Grozăvești (stație de metrou)"/>
+ </node>
+ <node id="32934991" lat="44.4429129" lon="26.0603674" user="Strainu" uid="126538" visible="true" version="45" changeset="7737962" timestamp="2011-04-01T18:32:21Z"/>
+ <node id="981543153" lat="44.4425330" lon="26.0605318" user="xybot" uid="70696" visible="true" version="4" changeset="6742403" timestamp="2010-12-23T06:15:32Z">
+  <tag k="name" v="Pod Grozăvești"/>
+  <tag k="railway" v="tram_stop"/>
+ </node>
+ <way id="999999800301" visible="true" version="1" timestamp="2011-09-09T16:46:00Z">
+  <nd ref="32934991"/>
+  <nd ref="582975264"/>
+  <tag k="FIXME" v="connects street intersection to subway station Grozăvești below" />
+  <tag k="highway" v="steps"/>
+  <tag k="incline" v="down"/>
+  <tag k="tunnel" v="yes"/>
+ </way>
+ <way id="999999800302" visible="true" version="1" timestamp="2011-09-09T16:46:00Z">
+  <nd ref="32934991"/>
+  <nd ref="981543153"/>
+  <tag k="FIXME" v="connects street intersection to tram stop Pod Grozăvești above" />
+  <tag k="highway" v="steps"/>
+  <tag k="incline" v="up"/>
+ </way>
+</osm>

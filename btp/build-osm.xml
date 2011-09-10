@@ -3,7 +3,6 @@
 
   <!-- directories -->
   <property name="src.dir" value="${base.dir}/src/main/osm"/>
-  <property name="src.add.osm" value="${src.dir}/bucharest-additions.osm"/>
 
   <property name="osm.build.dir" value="${build.dir}/osm"/>
   <property name="osm.dl.dir" value="${dl.dir}/osm"/>
@@ -25,6 +24,19 @@
   <!--
      *    OpenStreetMap OSM files
    -->
+  <property name="crangasi.osm"
+    value="${src.dir}/bucharest-crangasi-additions.osm"/>
+  <property name="dristor.osm"
+    value="${src.dir}/bucharest-dristor-additions.osm"/>
+  <property name="grozavesti.osm"
+    value="${src.dir}/bucharest-grozavesti-additions.osm"/>
+  <property name="titan.osm"
+    value="${src.dir}/bucharest-titan-additions.osm"/>
+  <property name="unirii.osm"
+    value="${src.dir}/bucharest-piata-unirii-additions.osm"/>
+  <property name="victoriei.osm"
+    value="${src.dir}/bucharest-piata-victoriei-additions.osm"/>
+
   <property name="center.osm"
      value="${osm.dl.dir}/map_lat+${lat1}_+${lat2}_lon+${lon1}_+${lon2}.osm"/>
   <property name="SW-S-SE.osm"
@@ -107,6 +119,13 @@
         <pathelement path="${W-NW.osm}"/>
         <pathelement path="${N.osm}"/>
         <pathelement path="${E-NE.osm}"/>
+
+        <pathelement path="${crangasi.osm}"/>
+        <pathelement path="${dristor.osm}"/>
+        <pathelement path="${grozavesti.osm}"/>
+        <pathelement path="${titan.osm}"/>
+        <pathelement path="${unirii.osm}"/>
+        <pathelement path="${victoriei.osm}"/>
       </sourcefiles>
       <sequential>
         <mkdir dir="${osm.build.dir}"/>
@@ -130,8 +149,20 @@
           <arg value="--merge"/>
           <arg value="--merge"/>
           <arg value="--rx"/> <arg file="${N.osm}"/><arg value="--sort"/>
-          <arg value="--rx"/> <arg file="${src.add.osm}"/><arg value="--sort"/>
           <arg value="--merge"/>
+
+          <arg value="--rx"/> <arg file="${crangasi.osm}"/><arg value="--sort"/>
+          <arg value="--rx"/> <arg file="${dristor.osm}"/><arg value="--sort"/>
+          <arg value="--merge"/>
+          <arg value="--rx"/> <arg file="${grozavesti.osm}"/><arg value="--sort"/>
+          <arg value="--rx"/> <arg file="${titan.osm}"/><arg value="--sort"/>
+          <arg value="--merge"/>
+          <arg value="--merge"/>
+          <arg value="--rx"/> <arg file="${unirii.osm}"/><arg value="--sort"/>
+          <arg value="--rx"/> <arg file="${victoriei.osm}"/><arg value="--sort"/>
+          <arg value="--merge"/>
+          <arg value="--merge"/>
+
           <arg value="--merge"/>
           <arg value="--wx"/> <arg file="${build.bucharest.osm}"/>
         </java>

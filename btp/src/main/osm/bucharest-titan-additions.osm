@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<osm version="0.6">
+
+ <node id="432783435" lat="44.4252508" lon="26.1627078" user="razvan85" uid="150632" visible="true" version="2" changeset="3318532" timestamp="2009-12-07T19:13:43Z">
+  <tag k="name" v="Titan"/>
+  <tag k="railway" v="station"/>
+ </node>
+ <node id="432783439" lat="44.4266300" lon="26.1623473" user="razvan85" uid="150632" visible="true" version="2" changeset="3318532" timestamp="2009-12-07T19:13:44Z"/>
+
+ <node id="543522092" lat="44.4250053" lon="26.1626823" user="andrixnet" uid="8815" visible="true" version="1" changeset="2973178" timestamp="2009-10-28T13:21:30Z">
+  <tag k="name" v="Titan"/>
+  <tag k="railway" v="subway_entrance"/>
+ </node>
+ <node id="623688358" lat="44.4248965" lon="26.1632008" user="alexst" uid="224244" visible="true" version="2" changeset="3801414" timestamp="2010-02-05T22:49:09Z">
+  <tag k="highway" v="traffic_signals"/>
+ </node>
+
+ <node id="631152814" lat="44.4266674" lon="26.1622366" user="Alex L" uid="462717" visible="true" version="2" changeset="8291852" timestamp="2011-05-30T12:53:19Z">
+  <tag k="name" v="Titan"/>
+  <!-- changed from station to subway_entrance -->
+  <tag k="railway" v="subway_entrance"/>
+ </node>
+ <node id="631150945" lat="44.4267646" lon="26.1627457" user="alexst" uid="224244" visible="true" version="1" changeset="3801414" timestamp="2010-02-05T22:54:17Z">
+  <tag k="highway" v="crossing"/>
+ </node>
+
+ <way id="999999800601" visible="true" version="1" timestamp="2011-09-08T19:40:00Z">
+  <nd ref="432783435"/>
+  <nd ref="432783439"/>
+  <tag k="FIXME" v="guessed subway station platform Titan" />
+  <tag k="railway" v="platform" />
+  <tag k="tunnel" v="yes" />
+ </way>
+ <way id="999999800602" visible="true" version="1" timestamp="2011-09-08T19:40:00Z">
+  <nd ref="631152814"/>
+  <nd ref="432783439"/>
+  <tag k="FIXME" v="guessed steps from subway entrance Titan to subway station platform Titan" />
+  <tag k="highway" v="steps" />
+  <tag k="incline" v="down" />
+  <tag k="tunnel" v="yes" />
+ </way>  
+ <way id="999999800603" visible="false" version="1" timestamp="2011-09-08T19:40:00Z">
+  <nd ref="631150945"/>
+  <nd ref="631152814"/>
+  <tag k="FIXME" v="guessed path from street to subway entrance Titan" />
+  <tag k="highway" v="footway" />
+ </way>
+ 
+ <way id="999999800604" visible="true" version="1" timestamp="2011-09-08T19:40:00Z">
+  <nd ref="543522092"/>
+  <nd ref="432783435"/>
+  <tag k="FIXME" v="guessed steps from subway entrance Titan to station Titan" />
+  <tag k="highway" v="steps" />
+  <tag k="incline" v="down" />
+  <tag k="tunnel" v="yes" />
+ </way>
+ <way id="999999800605" visible="false" version="1" timestamp="2011-09-08T19:40:00Z">
+  <nd ref="623688358"/>
+  <nd ref="543522092"/>
+  <tag k="FIXME" v="guessed path from street to subway entrance Titan" />
+  <tag k="highway" v="footway" />
+ </way>
+
+</osm>

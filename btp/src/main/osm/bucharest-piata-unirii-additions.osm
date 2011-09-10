@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<osm version="0.6">
+ <node id="305109987" lat="44.4266509" lon="26.1015094" user="razvan85" uid="150632" visible="true" version="31" changeset="3318532" timestamp="2009-12-07T19:13:34Z">
+  <tag k="name" v="Piata Unirii 1"/>
+  <tag k="railway" v="station"/>
+  <tag k="wheelchair" v="yes"/>
+ </node>
+
+ <node id="125382255" lat="44.4277703" lon="26.1041256" user="Strainu" uid="126538" visible="true" version="12" changeset="6358917" timestamp="2010-11-13T15:13:45Z">
+  <tag k="name" v="Piata Unirii 2"/>
+  <tag k="railway" v="station"/>
+  <tag k="wheelchair" v="limited"/>
+ </node>
+
+ <node id="530108386" lat="44.4290081" lon="26.1028599" user="Alex Morega" uid="316521" visible="true" version="3" changeset="8541315" timestamp="2011-06-25T11:43:50Z">
+  <tag k="highway" v="bus_stop"/>
+  <tag k="name" v="Piata Unirii"/>
+  <tag k="operator" v="RATB"/>
+ </node>
+ <node id="125382767" lat="44.4290413" lon="26.1030983" user="Qwerty23" uid="171078" visible="true" version="3" changeset="2455945" timestamp="2009-09-12T10:44:48Z">
+  <tag k="created_by" v="Potlatch 0.10e"/>
+  <tag k="name" v="Piata Unirii 2 (M1, M2)"/>
+  <tag k="railway" v="subway_entrance"/>
+ </node>
+ <node id="581511" lat="44.4288780" lon="26.1034770" user="eddyp" uid="66944" visible="true" version="10" changeset="860348" timestamp="2009-01-30T22:36:38Z"/>
+
+ <node id="682438" lat="44.4284824" lon="26.1010953" user="eddyp" uid="66944" visible="true" version="13" changeset="860348" timestamp="2009-01-30T22:36:37Z"/>
+ <node id="125383118" lat="44.4280120" lon="26.1008494" user="Cristian Draghici" uid="62512" visible="true" version="3" changeset="382365" timestamp="2008-10-16T07:47:15Z">
+  <tag k="created_by" v="Potlatch 0.10e"/>
+  <tag k="name" v="Piata Unirii 1 (M1, M2)"/>
+  <tag k="railway" v="subway_entrance"/>
+ </node>
+ <node id="801095384" lat="44.4275695" lon="26.1010554" user="theandy" uid="214468" visible="true" version="1" changeset="5136718" timestamp="2010-07-04T20:01:20Z">
+  <tag k="highway" v="bus_stop"/>
+  <tag k="name" v="Piata Unirii"/>
+  <tag k="operator" v="RATB"/>
+ </node>
+
+ <node id="103912489" lat="44.4285464" lon="26.1038493" user="alex-map" uid="30383" visible="true" version="2" changeset="149451" timestamp="2008-04-15T08:48:03Z">
+  <tag k="highway" v="traffic_signals"/>
+ </node>
+ <node id="125359780" lat="44.4275829" lon="26.1040595" user="xybot" uid="70696" visible="true" version="15" changeset="1425184" timestamp="2009-06-04T23:06:49Z">
+  <tag k="name" v="Pia?a Unirii 2 (M1, M2)"/>
+  <tag k="railway" v="subway_entrance"/>
+ </node>
+ <node id="21448876" lat="44.4267745" lon="26.1040142" user="eddyp" uid="66944" visible="true" version="6" changeset="1283828" timestamp="2009-05-22T10:05:58Z"/>
+
+ <node id="999999100101" lat="44.429039349493245" lon="26.1039984" visible="true" version="1" timestamp="2011-09-08T16:25:00Z">
+  <tag k="FIXME" v="end of platform Piata Unirii 2" />
+ </node>
+ <node id="999999100103" lat="44.42792489677991" lon="26.100741719813524" visible="true" version="1" timestamp="2011-09-08T16:25:00Z">
+  <tag k="FIXME" v="end of platform Piata Unirii 1" />
+ </node>
+
+ <way id="999999800101" visible="true" version="1" timestamp="2011-09-08T16:25:00Z">
+  <nd ref="125382767" />
+  <nd ref="999999100101"/>
+  <tag k="FIXME" v="guessed tunnel from subway entrance to platform Piata Unirii 2" />
+  <tag k="highway" v="steps" />
+  <tag k="incline" v="down" />
+  <tag k="tunnel" v="yes" />
+ </way>
+ <way id="999999800102" visible="true" version="1" timestamp="2011-09-08T16:25:00Z">
+  <nd ref="125359780" />
+  <nd ref="125382255" />
+  <tag k="FIXME" v="guessed tunnel from subway entrance to platform Piata Unirii 2" />
+  <tag k="highway" v="steps" />
+  <tag k="incline" v="down" />
+  <tag k="tunnel" v="yes" />
+ </way>
+ <way id="999999800103" visible="true" version="1" timestamp="2011-09-08T16:25:00Z">
+  <nd ref="125382255" />
+  <nd ref="999999100101" />
+  <tag k="FIXME" v="guessed subway station platform Piata Unirii 2" />
+  <tag k="railway" v="platform" />
+  <tag k="tunnel" v="yes" />
+ </way>
+ <way id="999999800105" visible="true" version="1" timestamp="2011-09-08T16:25:00Z">
+  <nd ref="125383118" />
+  <nd ref="999999100103" />
+  <tag k="FIXME" v="guessed tunnel from subway entrance to platform Piata Unirii 1" />
+  <tag k="highway" v="steps" />
+  <tag k="incline" v="down" />
+  <tag k="tunnel" v="yes" />
+ </way>
+ <way id="999999800106" visible="true" version="1" timestamp="2011-09-08T16:25:00Z">
+  <nd ref="999999100103" />
+  <nd ref="305109987" />
+  <tag k="FIXME" v="guessed subway station platform Piata Unirii 1" />
+  <tag k="railway" v="platform" />
+  <tag k="subway" v="yes" />
+  <tag k="tunnel" v="yes" />
+ </way>
+ <way id="999999800107" visible="false" version="1" timestamp="2011-09-08T16:25:00Z">
+  <nd ref="530108386"/>
+  <nd ref="125382767"/>
+  <nd ref="581511"/>
+  <tag k="highway" v="footway" />
+  <tag k="footway" v="sidewalk" />
+  <tag k="note" v="connect street to subway_entrance"/>
+ </way>
+ <way id="999999800108" visible="false" version="1" timestamp="2011-09-08T16:25:00Z">
+  <nd ref="682438"/>
+  <nd ref="125383118"/>
+  <nd ref="801095384"/>
+  <tag k="highway" v="footway" />
+  <tag k="footway" v="sidewalk" />
+  <tag k="note" v="connect street to subway_entrance"/>
+ </way>
+ <way id="999999800109" visible="false" version="1" timestamp="2011-09-08T16:25:00Z">
+  <nd ref="103912489"/>
+  <nd ref="125359780"/>
+  <nd ref="21448876"/>
+  <tag k="highway" v="footway" />
+  <tag k="footway" v="sidewalk" />
+  <tag k="note" v="connect street to subway_entrance"/>
+ </way>
+</osm>

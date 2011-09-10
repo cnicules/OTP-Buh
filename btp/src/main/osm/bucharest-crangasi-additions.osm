@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<osm version="0.6">
+
+ <node id="613652023" lat="44.4524454" lon="26.0469041" user="Strainu" uid="126538" visible="true" version="1" changeset="3619699" timestamp="2010-01-14T20:20:42Z"/>
+ <node id="610929145" lat="44.4523748" lon="26.0469104" user="Strainu" uid="126538" visible="true" version="2" changeset="3619657" timestamp="2010-01-14T20:15:37Z">
+  <tag k="name" v="Crânga?i"/>
+  <tag k="railway" v="subway_entrance"/>
+ </node>
+
+ <node id="641267309" lat="44.4522228" lon="26.0474625" user="wheelmap_visitor" uid="290680" visible="true" version="4" changeset="6357106" timestamp="2010-11-13T16:15:18Z">
+  <tag k="highway" v="bus_stop"/>
+  <tag k="name" v="Pia?a Crânga?i"/>
+  <tag k="wheelchair" v="limited"/>
+ </node>
+ <node id="610929143" lat="44.4517877" lon="26.0476498" user="wheelmap_visitor" uid="290680" visible="true" version="3" changeset="6357106" timestamp="2010-11-13T16:15:17Z">
+  <tag k="name" v="Crânga?i"/>
+  <tag k="railway" v="subway_entrance"/>
+  <tag k="wheelchair" v="no"/>
+ </node>
+ <node id="257547985" lat="44.4515565" lon="26.0477489" user="eddyp" uid="66944" visible="true" version="2" changeset="176645" timestamp="2008-10-07T22:01:33Z"/>
+
+ <node id="301985718" lat="44.4530031" lon="26.0480624" user="eddyp" uid="66944" visible="true" version="3" changeset="69207" timestamp="2008-10-04T19:14:22Z"/>
+ <node id="641267304" lat="44.4530028" lon="26.0481194" user="wheelmap_visitor" uid="290680" visible="true" version="4" changeset="6357106" timestamp="2010-11-13T16:15:16Z">
+  <tag k="highway" v="bus_stop"/>
+  <tag k="name" v="Pia?a Crânga?i"/>
+  <tag k="wheelchair" v="limited"/>
+ </node>
+
+ <node id="642103423" lat="44.4527570" lon="26.0463983" user="Strainu" uid="126538" visible="true" version="3" changeset="5929934" timestamp="2010-10-01T17:48:12Z">
+  <tag k="highway" v="bus_stop"/>
+  <tag k="name" v="?oseaua Crânga?i"/>
+ </node>
+ <node id="301686835" lat="44.4528489" lon="26.0463777" user="eddyp" uid="66944" visible="true" version="4" changeset="55425" timestamp="2008-10-04T12:00:15Z"/>
+
+
+ <way id="999999800401" visible="false" version="1" timestamp="2011-09-09T16:46:00Z">
+  <nd ref="613652023"/>
+  <nd ref="610929145"/>
+  <tag k="FIXME" v="connects paths to subway entrance Crânga?i northwest" />
+  <tag k="highway" v="footway"/>
+ </way>
+
+ <way id="999999800402" visible="false" version="1" timestamp="2011-09-09T16:46:00Z">
+  <nd ref="641267309"/>
+  <nd ref="610929143"/>
+  <nd ref="257547985"/>
+  <tag k="FIXME" v="connects subway entrance Crânga?i southeast to street and bus stop Pia?a Crânga?i" />
+  <tag k="highway" v="footway"/>
+ </way>
+
+ <way id="999999800403" visible="false" version="1" timestamp="2011-09-09T16:46:00Z">
+  <nd ref="301985718"/>
+  <nd ref="641267304"/>
+  <tag k="FIXME" v="connects paths to bus stop Pia?a Crânga?i north" />
+  <tag k="highway" v="footway"/>
+ </way>
+
+ <way id="999999800404" visible="false" version="1" timestamp="2011-09-09T16:46:00Z">
+  <nd ref="301686835"/>
+  <nd ref="642103423"/>
+  <tag k="FIXME" v="connects paths to bus stop ?oseaua Crânga?i southeast" />
+  <tag k="highway" v="footway"/>
+ </way>
+
+</osm>

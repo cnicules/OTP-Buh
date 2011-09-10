@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<osm version="0.6">
+ <node id="582553764" lat="44.4525032" lon="26.0864971" user="razvan85" uid="150632" visible="true" version="4" changeset="4814263" timestamp="2010-05-26T15:47:45Z">
+  <tag k="name" v="Piata Victoriei 2"/>
+  <tag k="railway" v="station"/>
+ </node>
+ <node id="582553767" lat="44.4523556" lon="26.0866165" user="razvan85" uid="150632" visible="true" version="2" changeset="4814263" timestamp="2010-05-26T15:47:44Z" />
+ <node id="582554849" lat="44.4516550" lon="26.0877534" user="razvan85" uid="150632" visible="true" version="3" changeset="4814263" timestamp="2010-05-26T15:47:52Z" />
+
+ <node id="582554910" lat="44.4519315" lon="26.0870983" user="razvan85" uid="150632" visible="true" version="6" changeset="3318481" timestamp="2009-12-07T19:04:16Z">
+  <tag k="name" v="Piata Victoriei 1"/>
+  <tag k="railway" v="station"/>
+ </node>
+ <node id="582554911" lat="44.4519650" lon="26.0881346" user="razvan85" uid="150632" visible="true" version="3" changeset="3305850" timestamp="2009-12-06T15:11:59Z"/>
+
+ <node id="257678855" lat="44.4516801" lon="26.0871191" user="eddyp" uid="66944" visible="true" version="7" changeset="751697" timestamp="2009-01-07T20:45:55Z"/>
+ <node id="582965253" lat="44.4516291" lon="26.0871527" user="razvan85" uid="150632" visible="true" version="2" changeset="3318481" timestamp="2009-12-07T19:04:16Z"/>
+ <node id="582965255" lat="44.4516136" lon="26.0871239" user="razvan85" uid="150632" visible="true" version="2" changeset="3318481" timestamp="2009-12-07T19:04:16Z">
+  <tag k="railway" v="subway_entrance"/>
+ </node>
+ <node id="582965256" lat="44.4516882" lon="26.0875880" user="razvan85" uid="150632" visible="true" version="1" changeset="3318271" timestamp="2009-12-07T18:39:53Z">
+  <tag k="railway" v="subway_entrance"/>
+ </node>
+ <node id="31402055" lat="44.4518617" lon="26.0871335" user="artmatrix" uid="104589" visible="true" version="12" changeset="750622" timestamp="2009-03-07T13:08:16Z"/>
+ <node id="1006015295" lat="44.4509527" lon="26.0889046" user="alexst" uid="224244" visible="true" version="1" changeset="6465366" timestamp="2010-11-26T21:20:17Z"/>
+ <node id="1006022188" lat="44.4509442" lon="26.0885589" user="alexst" uid="224244" visible="true" version="1" changeset="6465398" timestamp="2010-11-26T21:24:19Z"/>
+ <node id="999999100201" lat="44.4519742" lon="26.0872400" visible="true" version="1" timestamp="2011-09-08T16:25:00Z">
+  <tag k="FIXME" v="guessed location of steps between platform Victoriei 2 and platform Victoriei 1"/>
+ </node>
+
+ <way id="999999800201" visible="true" version="1" timestamp="2011-09-08T16:25:00Z">
+  <nd ref="582553764"/>
+  <nd ref="582553767"/>
+  <nd ref="999999100201"/>
+  <nd ref="582554849"/>
+  <tag k="FIXME" v="guessed subway station platform Piata Victoriei 2" />
+  <tag k="railway" v="platform" />
+  <tag k="tunnel" v="yes" />
+ </way>
+ <way id="999999800202" visible="true" version="1" timestamp="2011-09-08T16:25:00Z">
+  <nd ref="582554910"/>
+  <nd ref="582554911"/>
+  <tag k="FIXME" v="guessed subway station platform Piata Victoriei 1" />
+  <tag k="railway" v="platform" />
+  <tag k="tunnel" v="yes" />
+ </way>
+ <way id="999999800203" visible="true" version="1" timestamp="2011-09-08T16:25:00Z">
+  <nd ref="999999100201"/>
+  <nd ref="582554910"/>
+  <tag k="FIXME" v="guessed tunnel from platform Piata Victoriei 1 to platform Piata Victoriei 2" />
+  <tag k="highway" v="steps" />
+  <tag k="incline" v="down" />
+  <tag k="tunnel" v="yes" />
+ </way>
+ <way id="999999800204" visible="true" version="1" timestamp="2011-09-08T16:25:00Z">
+  <nd ref="582965256"/>
+  <nd ref="582554849"/>
+  <tag k="FIXME" v="guessed tunnel from subway entrance to platform Piata Victoriei 2" />
+  <tag k="highway" v="steps" />
+  <tag k="incline" v="down" />
+  <tag k="tunnel" v="yes" />
+ </way>
+ <way id="999999800205" visible="true" version="1" timestamp="2011-09-08T16:25:00Z">
+  <nd ref="582965255"/>
+  <nd ref="582965253"/>
+  <tag k="FIXME" v="guessed tunnel from subway entrance to tunnel pedestrian Piata Victoriei" />
+  <tag k="highway" v="steps" />
+  <tag k="incline" v="down" />
+  <tag k="tunnel" v="yes" />
+ </way>
+ <way id="999999800206" visible="false" version="1" timestamp="2011-09-08T16:25:00Z">
+  <nd ref="257678855"/>
+  <nd ref="582965255"/>
+  <nd ref="1006022188"/>
+  <tag k="highway" v="footway" />
+  <tag k="footway" v="sidewalk" />
+  <tag k="note" v="connect street to subway_entrance"/>
+ </way>
+ <way id="999999800207" visible="false" version="1" timestamp="2011-09-08T16:25:00Z">
+  <nd ref="31402055"/>
+  <nd ref="582965256"/>
+  <nd ref="1006015295"/>
+  <tag k="highway" v="footway" />
+  <tag k="footway" v="sidewalk" />
+  <tag k="note" v="connect street to subway_entrance"/>
+ </way>
+</osm>
