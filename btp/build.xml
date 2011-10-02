@@ -131,7 +131,9 @@
       with directory paths where Osmosis and OpenTripPlanner are installed.&#xA;
       The build.properties file should look similar to: &#xA;
         osmosis.home.dir = /PATH-TO-INSTALL-DIR/osmosis-0.39 &#xA;
-        otp.home.dir = /PATH-TO-INSTALL-DIR/otp">
+        otp.home.dir = /PATH-TO-INSTALL-DIR/otp &#xA;
+      optional property (omit or comment out to download new buchartest.osm):
+        bucharest.prepared.osm = /PATH-TO-DIR/bucuresti-daily.osm">
       <condition>
         <not><available file="${base.dir}/build.properties" type="file"/></not>
       </condition>

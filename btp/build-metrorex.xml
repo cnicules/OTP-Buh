@@ -194,7 +194,7 @@
     </outofdate>
   </target>
 
-  <target name="metrorex-routes" depends="osm-merge">
+  <target name="metrorex-routes" depends="osm-build">
 
     <property name="metrorex-routes.xml"
       value="${metrorex.build.dir}/metrorex-routes.xml"/>
@@ -260,7 +260,7 @@
         </sourcefiles>
         <sequential>
           <xslt in="${metrorex-freqs.xml}" out="${metrorex-trips.xml}"
-            style="${freqs-to-trips.xslt}">
+            style="${freqs-to-trips.xslt}" force="true"> 
             <param name="routesXml" expression="${metrorex-routes.xml}"/>
           </xslt>
           <echo>${metrorex-trips.xml}</echo>
@@ -310,7 +310,7 @@
         <sequential>
           <mkdir dir="${metrorex.gtfs.dir}"/>
           <xslt in="${metrorex-freqs.xml}" out="${metrorex.frequencies.txt}"
-            style="${freqs-xmlToGtfsTxt.xslt}">
+            style="${freqs-xmlToGtfsTxt.xslt}" force="true">
             <param name="tripsXml" expression="${metrorex-trips.xml}"/>
           </xslt>
           <echo>${metrorex.frequencies.txt}</echo>
@@ -319,7 +319,7 @@
     </sequential>
   </target>
 
-  <target name="metrorex-stops" depends="osm-merge">
+  <target name="metrorex-stops" depends="osm-build">
     <property name="metrorex-route-stops.xml"
       value="${metrorex.build.dir}/metrorex-route-stops.xml"/>
     <sequential>

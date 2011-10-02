@@ -7,6 +7,9 @@
   <property name="osm.build.dir" value="${build.dir}/osm"/>
   <property name="osm.dl.dir" value="${dl.dir}/osm"/>
 
+  <!-- result file -->
+  <property name="build.bucharest.osm" value="${osm.build.dir}/bucharest.osm"/>
+
   <!-- urls -->
   <property name="osm.api.url"
     value="http://api.openstreetmap.org/api/0.6/map"/>
@@ -105,12 +108,13 @@
     description="Remove all downloaded maps to force new downloads">
   </target>
   
-  <target name="osm-merge"
-    description="Merge region osms and additions into bucharest.osm"
-    depends="check-build.properties,osm-download-bucharest">
+  <target name="osm-build" depends="osm-merge,osm-copy"/>
 
-    <property name="build.bucharest.osm"
-      value="${osm.build.dir}/bucharest.osm"/>
+  <target name="osm-merge"
+    description="Merge downloaded osms and additions into bucharest.osm"
+    depends="check-build.properties,osm-download-bucharest"
+    unless="bucharest.prepared.osm">
+
     <outofdate>
       <targetfiles path="${build.bucharest.osm}"/>
       <sourcefiles>
@@ -169,6 +173,17 @@
         <echo>${build.bucharest.osm}</echo>
       </sequential>
     </outofdate>
+  </target>
+
+  <target name="osm-copy"
+    description="Copy ${bucharest.prepared.osm} instead of downloads"
+    depends="check-build.properties"
+    if="bucharest.prepared.osm">
+    <!-- bucharest.prepared.osm is optionally defined in build.properties -->
+
+    <!-- copy so all targets read same version even if source changes. -->
+    <copy file="${bucharest.prepared.osm}"
+          tofile="${build.bucharest.osm}"/>
   </target>
 
   <target name="osm-clean"

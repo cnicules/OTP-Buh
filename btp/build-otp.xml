@@ -14,7 +14,7 @@
 
   <target name="otp-graph-builder"
     description="build OpenTripPlanner graph-builder.xml"
-    depends="otp-properties,osm-merge,metrorex-gtfs,ratbtram-gtfs,ratbtrob-gtfs,ratbubus-gtfs">
+    depends="otp-properties,osm-build,metrorex-gtfs,ratbtram-gtfs,ratbtrob-gtfs,ratbubus-gtfs">
 
     <property name="otpGtfsInputs.xml"
       value="${otp.build.dir}/otp-gtfs-inputs.xml"/>
@@ -78,7 +78,7 @@
   </target>
 
   <target name="otp-build-graph"
-    depends="otp-properties,osm-merge,metrorex-gtfs,ratbtram-gtfs,ratbtrob-gtfs,ratbubus-gtfs,otp-graph-builder"
+    depends="otp-properties,osm-build,metrorex-gtfs,ratbtram-gtfs,ratbtrob-gtfs,ratbubus-gtfs,otp-graph-builder"
     description="build OpenTripPlanner Graph.obj">
 
     <outofdate>

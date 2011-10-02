@@ -289,7 +289,7 @@
         </sourcefiles>
         <sequential>
           <xslt in="${ratbubus-freq-inputs.xml}" out="${ratbubus-freqs.xml}"
-            style="${ratb-parse-freqs.xslt}">
+            style="${ratb-parse-freqs.xslt}" force="true">
             <param name="stopSeqsXml" expression="${ratbubus-stopseqs.xml}"/>
           </xslt>
           <echo>${ratbubus-freqs.xml}</echo>
@@ -298,7 +298,7 @@
     </sequential>
   </target>
 
-  <target name="ratbubus-routes" depends="osm-merge,ratbubus-parse-stopseqs">
+  <target name="ratbubus-routes" depends="osm-build,ratbubus-parse-stopseqs">
 
     <property name="ratbubus-routes.xml"
       value="${ratbubus.build.dir}/ratbubus-routes.xml"/>
@@ -319,7 +319,7 @@
         </sourcefiles>
         <sequential>
           <xslt in="${build.bucharest.osm}" out="${ratbubus-routes.xml}"
-            style="${ratbubus-osmToRoutesXml.xslt}">
+            style="${ratbubus-osmToRoutesXml.xslt}" force="true">
             <param name="stopSeqsXml" expression="${ratbubus-stopseqs.xml}"/>
           </xslt>          
           <echo>${ratbubus-routes.xml}</echo>
@@ -372,7 +372,7 @@
         </sourcefiles>
         <sequential>
           <xslt in="${ratbubus-freqs.xml}" out="${ratbubus-trips.xml}"
-            style="${freqs-to-trips.xslt}">
+            style="${freqs-to-trips.xslt}" force="true">
             <param name="routeType" expression="urbanbus"/>
             <param name="routesXml" expression="${ratbubus-routes.xml}"/>
           </xslt>
@@ -425,7 +425,7 @@
         <sequential>
           <mkdir dir="${ratbubus.gtfs.dir}"/>
           <xslt in="${ratbubus-freqs.xml}" out="${ratbubus.frequencies.txt}"
-            style="${freqs-xmlToGtfsTxt.xslt}">
+            style="${freqs-xmlToGtfsTxt.xslt}" force="true">
             <param name="tripsXml" expression="${ratbubus-trips.xml}"/>
           </xslt>
           <echo>${ratbubus.frequencies.txt}</echo>
@@ -434,7 +434,7 @@
     </sequential>
   </target>
 
-  <target name="ratbubus-stops" depends="osm-merge">
+  <target name="ratbubus-stops" depends="osm-build">
     <property name="ratbubus-route-stops.xml"
       value="${ratbubus.build.dir}/ratbubus-route-stops.xml"/>
     <sequential>

@@ -98,6 +98,13 @@ INSTALLATION
     osmosis.home.dir = /usr/local/share/osmosis-0.39
     otp.home.dir = /otp
 
+ (optional bucharest.prepared.osm: by default the build will download and 
+  create the file "build/bucharest.osm" from api.opentripplanner.org 
+  if one does not exist.  If there is another local source for this file, 
+  add the following property to build.properties:
+    bucharest.prepared.osm = /PATH-TO-DIR/bucharest.osm
+  The file must be an osm file, but does not need to be named "bucharest.osm".)
+
 3. (optional) To reuse previously downloaded schedule and map files,
    copy them to new directory:
      cp -r PATH-TO-OLD/btp/downloads PATH-TO-NEW/btp
@@ -115,6 +122,14 @@ INSTALLATION
       ant clean build
     should work.)
    
+   (Note: on some machines, the Osmosis merge may produce the following error:
+    java.lang.LinkageError:
+      loader (instance of org/codehaus/plexus/classworlds/realm/ClassRealm):
+        attempted  duplicate class definition for name:
+	  "org/apache/xerces/jaxp/datatype/DatatypeFactoryImpl"
+    In many cases, this may be a timing error [maybe caused by a slow disk].
+    Simply run ant.sh immediately again.  Then it usually works.)
+
 5. (Re)Start local OpenTripPlanner
 
     Winstone server started as application:

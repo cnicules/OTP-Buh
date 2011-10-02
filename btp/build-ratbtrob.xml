@@ -288,7 +288,7 @@
         </sourcefiles>
         <sequential>
           <xslt in="${ratbtrob-freq-inputs.xml}" out="${ratbtrob-freqs.xml}"
-            style="${ratb-parse-freqs.xslt}">
+            style="${ratb-parse-freqs.xslt}" force="true">
             <param name="stopSeqsXml" expression="${ratbtrob-stopseqs.xml}"/>
           </xslt>
           <echo>${ratbtrob-freqs.xml}</echo>
@@ -297,7 +297,7 @@
     </sequential>
   </target>
 
-  <target name="ratbtrob-routes" depends="osm-merge,ratbtrob-parse-stopseqs">
+  <target name="ratbtrob-routes" depends="osm-build,ratbtrob-parse-stopseqs">
 
     <property name="ratbtrob-routes.xml"
       value="${ratbtrob.build.dir}/ratbtrob-routes.xml"/>
@@ -318,7 +318,7 @@
         </sourcefiles>
         <sequential>
           <xslt in="${build.bucharest.osm}" out="${ratbtrob-routes.xml}"
-            style="${ratbtrob-osmToRoutesXml.xslt}">
+            style="${ratbtrob-osmToRoutesXml.xslt}" force="true">
             <param name="stopSeqsXml" expression="${ratbtrob-stopseqs.xml}"/>
           </xslt>          
           <echo>${ratbtrob-routes.xml}</echo>
@@ -371,7 +371,7 @@
         </sourcefiles>
         <sequential>
           <xslt in="${ratbtrob-freqs.xml}" out="${ratbtrob-trips.xml}"
-            style="${freqs-to-trips.xslt}">
+            style="${freqs-to-trips.xslt}" force="true">
             <param name="routeType" expression="trolleybus"/>
             <param name="routesXml" expression="${ratbtrob-routes.xml}"/>
           </xslt>
@@ -424,7 +424,7 @@
         <sequential>
           <mkdir dir="${ratbtrob.gtfs.dir}"/>
           <xslt in="${ratbtrob-freqs.xml}" out="${ratbtrob.frequencies.txt}"
-            style="${freqs-xmlToGtfsTxt.xslt}">
+            style="${freqs-xmlToGtfsTxt.xslt}" force="true">
             <param name="tripsXml" expression="${ratbtrob-trips.xml}"/>
           </xslt>
           <echo>${ratbtrob.frequencies.txt}</echo>
@@ -433,7 +433,7 @@
     </sequential>
   </target>
 
-  <target name="ratbtrob-stops" depends="osm-merge">
+  <target name="ratbtrob-stops" depends="osm-build">
     <property name="ratbtrob-route-stops.xml"
       value="${ratbtrob.build.dir}/ratbtrob-route-stops.xml"/>
     <sequential>

@@ -1,3 +1,48 @@
+<!-- Create list of trips.xml from OSM route-ids and schedule stop-names.
+
+  Input document: *-frequencies.xml
+  One frequency for each route, service, direction, (beginStop/endStop).
+  (Two directions may be combined into 'both' if they are otherwise the same.)
+    <frequencies>
+      <route short_name="[routeNumber]">
+        <service operator="[agencyName]" serviceType="[serviceId]"
+                 beginStop="[fowardBeginStopName]"
+                 endStop="[fowardEndStopName]"/>
+          <frequency dir="[both/forward/backward]"
+                     beginTime="[HH:mm:ss]" endTime="[HH:mm:ss]"
+                     headwayMinutes="[minutes]"/>
+          ...
+        </service>
+      </route>
+      ...
+    </frequencies>
+
+  Param routeType: Type of route, such as "subway" or "tram". For log. 
+
+  Param routeXml: xml list of routes.
+    Basically xml form of GTFS routes.txt.
+      <routes>
+        <route route_id="[osmRelationId]"
+               agency_id="[agencyName]"
+               route_short_name="[routeNumber]"
+               route_long_name="[descriptiveName]"
+               route_type="[GTFSRouteTypeNumber]"
+               route_color="[6HexDigits]"
+               route_text_color="[6HexDigits]"/>
+        ...
+      </routes>
+
+  Output document: *-trips.xml
+  Basically xml form of GTFS trips.txt plus beginStop/endStop.
+  One trip for each route, service, direction, (beginStop/endStop).
+    <trips>
+      <trip trip_id="[routeNumber_serviceId_beginStopAbbr_TURorRET_endStopAbbr]"
+            route_id="[osmRouteId]" route_short_name="[routeNumber]"
+            service_id="[serviceId]" direction_id="[0 or 1]"
+            beginStop="[forwardBeginStopName]" endStop="[forwardEndStopName]"/>
+      ...
+    </trips>
+-->
 <xsl:transform version="1.0"
                xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
 
