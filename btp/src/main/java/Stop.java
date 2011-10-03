@@ -60,19 +60,37 @@ class Stop implements Comparable<Stop> {
    */
   public String getNameSansDiacritics() { return this.nameSansDiacritics; }
   
+  private final double EARTH_RADIUS_m = 6371e3; // 6371km earth radius
+  private final double RADIANS_PER_DEGREE = Math.PI/180;
+  private final double DEGREES_PER_RADIAN = 180/Math.PI;
+  private final double distanceNorth_m(Stop that) {
+    double dLat_rad = RADIANS_PER_DEGREE * (that.lat - this.lat);
+    return EARTH_RADIUS_m * dLat_rad;
+  }
+  private final double distanceEast_m(Stop that) {
+    double smallLat_rad = RADIANS_PER_DEGREE * Math.min(Math.abs(that.lat),
+                                                        Math.abs(this.lat));
+    double dLon_rad = RADIANS_PER_DEGREE * (that.lon - this.lon);
+    return EARTH_RADIUS_m * Math.cos(smallLat_rad) * dLon_rad;
+  }
+
   /**
    * Return distance in meters calculated from latitude and longitude.
    */
   public double distance_m(Stop that) {
-    final double r = 6371e3; // 6371km earth radius
-    final double radiansPerDegree = Math.PI/180;
-    double dLat_rad = radiansPerDegree * (that.lat - this.lat);
-    double dNorth_m = r * dLat_rad;
-    double smallLat_rad = radiansPerDegree * Math.min(Math.abs(that.lat),
-                                                      Math.abs(this.lat));
-    double dLon_rad = radiansPerDegree * (that.lon - this.lon);
-    double dEast_m = r * Math.cos(smallLat_rad) * dLon_rad;
+    double dNorth_m = distanceNorth_m(that);
+    double dEast_m = distanceEast_m(that);
     return Math.sqrt(dNorth_m * dNorth_m + dEast_m * dEast_m);
+  }
+  /**
+   * Return compass direction in degrees clockwise from north.
+   */
+  public double direction_deg(Stop that) {
+    double dNorth_m = distanceNorth_m(that);
+    double dEast_m = distanceEast_m(that);
+    // atan2 is angle counter-clockwise from x-axis,
+    // so swap axes to get angle clockwise from north.
+    return DEGREES_PER_RADIAN * Math.atan2(dEast_m, dNorth_m);
   }
 
   /**

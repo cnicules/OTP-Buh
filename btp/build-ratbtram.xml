@@ -551,6 +551,7 @@
             <sysproperty key="java.util.logging.config.file"
               value="${base.dir}/src/main/java/logging.properties"/>
             <arg value="ro"/>
+            <arg value="right"/>
             <arg value="tram"/>
             <arg value="${ratbtram-trips.xml}"/>
             <arg value="${ratbtram-stopseqs.xml}"/>

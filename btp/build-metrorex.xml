@@ -414,6 +414,7 @@
             <sysproperty key="java.util.logging.config.file"
               value="${base.dir}/src/main/java/logging.properties"/>
             <arg value="ro"/>
+            <arg value="right"/>
             <arg value="subway"/>
             <arg value="${metrorex-trips.xml}"/>
             <arg value="${metrorex-stopseqs.xml}"/>

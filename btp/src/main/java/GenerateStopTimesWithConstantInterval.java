@@ -67,13 +67,14 @@ import org.w3c.dom.Node;
  */
 public class GenerateStopTimesWithConstantInterval {
   public static void main(String[] args) {
-    if (args.length != 10) {
+    if (args.length != 11) {
       System.err.println
-        ("parameters: lang routeType "+
+        ("parameters: lang routeType trafficSide "+
          "tripsXml stopSeqsXml routesStopsXml stopsXml "+
          "boardingDur travelDur outXml errLog\n"+
          " where:\n"+
          "  lang        lowercase 2-letter ISO-639 language code\n"+
+         "  trafficSide LEFT or RIGHT\n"+
          "  routeType   OSM route type: "
          +             "railway|subway|tram|trolleybus|bus|ferry\n"+
          "  tripsXml    trips/trip/{@tripId,@route_short_name,@direction}\n"+
@@ -92,6 +93,14 @@ public class GenerateStopTimesWithConstantInterval {
     // parse parameters
     int p = 0;
     Locale locale = new Locale(args[p++]);
+    String trafficSideString = args[p++];
+    TrafficSide trafficSide;
+    try { trafficSide = TrafficSide.valueOf(trafficSideString.toUpperCase()); }
+    catch (IllegalArgumentException ex) {
+      System.err.println("trafficSide must be LEFT or RIGHT: "+trafficSideString);
+      System.exit(SysExits.EX_USAGE);
+      throw new AssertionError(); // satisfy compiler
+    }
     String routeType = args[p++];
     File tripsXml = new File(args[p++]);
     File stopSeqsXml = new File(args[p++]);
@@ -128,7 +137,7 @@ public class GenerateStopTimesWithConstantInterval {
     try { 
       GenerateStopTimesWithConstantInterval generator =
         new GenerateStopTimesWithConstantInterval
-        (locale, routeType, tripsXml, stopSeqsXml, routeStopsXml, stopsXml,
+        (locale, trafficSide, routeType, tripsXml, stopSeqsXml, routeStopsXml, stopsXml,
          boardingDur, travelDur, outXml, errLog);
       generator.run();
     } catch (IOException ex) {
@@ -143,6 +152,7 @@ public class GenerateStopTimesWithConstantInterval {
   private final Duration boardingDur, travelDur;
   private final File tripsXml, stopSeqsXml, routeStopsXml, stopsXml, outXml;
   private final String routeType;
+  private final TrafficSide trafficSide;
 
   private final StopFromId stopFromId = new StopFromId();
   private final StopsFromName stopsFromName;
@@ -161,6 +171,7 @@ public class GenerateStopTimesWithConstantInterval {
   /**
    * Construct generator and initialize log handler.
    * @param locale identifies language used for collator for matching names.
+   * @param trafficSide the side of the way on which traffic travels.
    * @param routeType OSM route type, such as 
    * railway, subway, tram, trolleybus, bus, or ferry; used in log messages.
    * @param tripsXml for each trip, the id, the route, direction,
@@ -184,12 +195,12 @@ public class GenerateStopTimesWithConstantInterval {
    * @throws NullPointerException if any parameter is null.
    */
   public GenerateStopTimesWithConstantInterval
-    (Locale locale, String routeType,
+    (Locale locale, TrafficSide trafficSide, String routeType,
      File tripsXml, File stopSeqsXml, File routeStopsXml, File stopsXml,
      Duration boardingDur, Duration travelDur,
      File outXml, File errLog) throws IOException
   {
-    if (locale == null ||
+    if (locale == null || trafficSide == null ||
         tripsXml == null || stopSeqsXml == null || stopsXml == null ||
         boardingDur == null || travelDur == null ||
         outXml == null || errLog == null)
@@ -203,6 +214,7 @@ public class GenerateStopTimesWithConstantInterval {
     this.outXml = outXml;
     this.stopsFromName = new StopsFromName(locale);
     this.routeType = routeType;
+    this.trafficSide = trafficSide;
     initLogHandler(errLog);
   }
 
@@ -490,7 +502,8 @@ public class GenerateStopTimesWithConstantInterval {
       String routeName = schedRouteElement.getAttribute("short_name");
       Set<Stop> routeStops = this.stopsFromMapRoute.get(routeName);
       if (routeStops == null) {
-        LOG.severe(this.routeType+" route "+routeName+" not found in OSM map.");
+        LOG.severe("Route "+this.routeType+" "+routeName+
+                   " not found in OSM map.");
         routeStops = Collections.emptySet();
       }
 
@@ -506,7 +519,7 @@ public class GenerateStopTimesWithConstantInterval {
                             seqStopsMap, counts);
 
       if (seqStopsMap.isEmpty()) {
-        LOG.severe(this.routeType+" route "+routeName+" has no located stops.");
+        LOG.severe("Route "+this.routeType+" "+routeName+" has no located stops.");
         // do not add to stopsFromSched.
         counts.routeSkipCount++;
       } else {
@@ -570,30 +583,28 @@ public class GenerateStopTimesWithConstantInterval {
           double ac = a.distance_m(c);
           if (ab > ac || bc > bc) {
             LOG.warning
-              (this.routeType+ " "+routeName+" "+dir+
+              ("Route "+this.routeType+ " "+routeName+" "+dir+
                " stop "+p+" \""+b.getName()+"\""+
                " is further from neighbors than distance between them: "+ b);
             counts.notBetweenNeighborsCount++;
           }
         }
       }
-      Set<Stop> mapRouteStopsUnmatched = new LinkedHashSet<Stop>(routeStops);
-      mapRouteStopsUnmatched.removeAll(seqStops);
-
+      Set<Stop> mapRouteStopsUnmatched = removeMatchedStops(routeStops, seqStops);
       String summary = makeTripSummary(routeName, dir,
                                        schedStopNamesUnmatched,
                                        schedStopsSubstFromOtherRoute,
                                        mapRouteStopsUnmatched);
       if (seqStops.isEmpty() || seqStops.get(0) == null) { 
         // null would be replaced with later stop if there is one.
-        LOG.severe(this.routeType+" route "+routeName+
-                   " direction "+dir+" has no located stops.");
+        LOG.severe("Route "+this.routeType+" "+routeName+ " "+dir+
+                   " has no located stops.");
         // do not add to seqStopsMap.
         counts.seqSkipCount++;
       } else {
         assert !seqStops.contains(null);
         if (new TreeSet<Stop>(seqStops).size() < 2) {
-          LOG.severe(this.routeType+" route "+routeName+" direction "+dir+
+          LOG.severe("Route "+this.routeType+" "+routeName+" "+dir+
                      " has less than 2 located stops.");
           // do not add to seqStopsMap.
           counts.seqSkipCount++;
@@ -683,19 +694,20 @@ public class GenerateStopTimesWithConstantInterval {
                                   Set<Stop> intersection,
                                   Stop latestNonNullStop, List<Stop> seqStops,
                                   LoggedStopCounts counts){
+    // Two stops are common, one located on each side of street; warn if more.
+    Level logLevel = intersection.size() == 2 ? Level.FINE : Level.WARNING;
+    String logReason = (!LOG.isLoggable(logLevel)? null :
+                        "Map route "+this.routeType+" "+routeName+
+                        " has "+intersection.size()+ " \""+name+"\" stops");
     assert intersection.size() > 1;
     if (latestNonNullStop == null) { 
-      LOG.warning("map "+this.routeType+" "+routeName+
-                  " has "+intersection.size()+ " \""+name+"\" stops;"+
-                  " taking first for now: "+intersection);
+      if (LOG.isLoggable(logLevel))
+        LOG.log(logLevel, logReason + "; taking first for now: "+intersection);
       latestNonNullStop = intersection.iterator().next(); //take first
     } else {
-      Stop closestStop =
-        selectClosestStop(latestNonNullStop, intersection);
-      LOG.warning("map "+this.routeType+" "+routeName+
-                  " has "+intersection.size()+ " \""+name+"\" stops;"+
-                  " taking closest for now: "+closestStop);
-      latestNonNullStop = closestStop;
+      latestNonNullStop =
+        selectCloseStopOnTrafficSide(latestNonNullStop, intersection,
+                                     logLevel, logReason);
     }
     seqStops.add(latestNonNullStop); 
     counts.stopDupCount++;
@@ -707,31 +719,34 @@ public class GenerateStopTimesWithConstantInterval {
                                   Stop latestNonNullStop, List<Stop> seqStops,
                                   List<Stop> schedStopsSubstFromOtherRoute,
                                   LoggedStopCounts counts){
+    assert namedStops.size() >= 1;
+    Level logLevel = Level.WARNING; // always warn of missing stops
     if (namedStops.size() == 1) {
       latestNonNullStop = namedStops.iterator().next();
-      LOG.fine("map "+this.routeType+" route "+routeName+" has no stop \""+name+
-               "\"; substituting stop with same name "+
-               "from another "+this.routeType+" route: "+ latestNonNullStop);
+      if (LOG.isLoggable(logLevel))
+        LOG.log(logLevel, "Map route "+this.routeType+" "+routeName+
+                " has no stop \""+name+"\"; substituting stop with same name "+
+                "from another "+this.routeType+" route: "+
+                latestNonNullStop.getId());
       seqStops.add(latestNonNullStop);
       counts.sameNameStopSubstCount++;
       schedStopsSubstFromOtherRoute.add(latestNonNullStop);
     } else {
+      String logReason = (!LOG.isLoggable(logLevel) ? null :
+                          "map "+this.routeType+" "+routeName+
+                          " has no stop \""+name+"\" and "+
+                          namedStops.size()+" stops have that name"+
+                          " on other "+this.routeType+" route(s)");
       if (latestNonNullStop == null) { 
         latestNonNullStop = namedStops.iterator().next();
-        LOG.fine("map "+this.routeType+" "+routeName+
-                 " has no stop \""+name+"\" and "+
-                 namedStops.size()+" stops have that name"+
-                 " on other "+this.routeType+" route(s); "+
-                 "substituting first for now: "+ namedStops);
+        if (LOG.isLoggable(logLevel)) {
+          LOG.log(logLevel, logReason +
+                  "; substituting first for now: "+ latestNonNullStop.getId());
+        }
       } else {
-        Stop closestStop =
-          selectClosestStop(latestNonNullStop, namedStops);
-        LOG.fine("map "+this.routeType+" "+routeName+
-                 " has no stop \""+name+"\" and "+
-                 namedStops.size()+" stops have that name"+
-                 " on other "+this.routeType+" route(s); "+
-                 "substituting closest for now: "+ closestStop);
-        latestNonNullStop = closestStop;
+        latestNonNullStop =
+          selectCloseStopOnTrafficSide(latestNonNullStop, namedStops,
+                                       logLevel, logReason);
       }
       seqStops.add(latestNonNullStop);
       counts.sameNameStopSubstCount++;
@@ -740,12 +755,41 @@ public class GenerateStopTimesWithConstantInterval {
     return latestNonNullStop;
   }
 
+  /**
+   * Remove stops that have been matched from routeStops.  Also remove
+   * stops that have the same name as a matched stop and are within
+   * MAX_STOP_PAIR_DISTANCE_m meters (stop on opposite side of street).
+   */
+  private Set<Stop> removeMatchedStops(Set<Stop> routeStops,
+                                       List<Stop> matchedStops) {
+    Set<Stop> routeStopsUnmatched = new LinkedHashSet<Stop>(routeStops);
+    routeStopsUnmatched.removeAll(matchedStops);
+    // also remove stops that are near matchedStops (other side of street)
+    if (!routeStopsUnmatched.isEmpty()) {
+      Iterator<Stop> iter = routeStopsUnmatched.iterator();
+      while (iter.hasNext()) {
+        Stop unmatchedStop = iter.next(); 
+        String unmatchedStopName = unmatchedStop.getName();
+        if (unmatchedStopName != null && unmatchedStopName.length() > 0) {
+          for (Stop stop : matchedStops) {
+            if (stop != null && unmatchedStopName.equals(stop.getName()) &&
+                unmatchedStop.distance_m(stop) <= MAX_STOP_PAIR_DISTANCE_m) {
+              iter.remove(); // remove other of pair
+              break;
+            }
+          }
+        }
+      }
+    }
+    return routeStopsUnmatched;
+  }
+
   private String makeTripSummary(String routeName, String dir, 
                                  List<String> schedStopNamesUnmatched,
                                  List<Stop> schedStopsSubstFromOtherRoute,
                                  Set<Stop> mapRouteStopsUnmatched) {
     StringBuilder summary =
-      new StringBuilder(this.routeType+" route "+routeName+ " "+dir+ ":\n"); 
+      new StringBuilder("Route "+this.routeType+" "+routeName+ " "+dir+ ":\n"); 
     int emptyLength = summary.length();
 
     if (!schedStopNamesUnmatched.isEmpty()) {
@@ -779,20 +823,114 @@ public class GenerateStopTimesWithConstantInterval {
     return summary.length() == emptyLength ? "" : summary.toString();
   }
 
-  private Stop selectClosestStop(Stop latestStop, Set<Stop> candidates) {
+  /**
+   * From candidates, select the two stops closest to latestStop.
+   * @return result[0] is closest stop, result[1] is next closest stop.
+   */
+  private Stop[] selectClosest2Stops(Stop latestStop, Set<Stop> candidates) {
     assert !candidates.isEmpty();
     Iterator<Stop> iterator = candidates.iterator();
-    Stop closestStopYet = null;
+    Stop closestStopYet = null, secondClosestStopYet = null;
     double closestDistanceYet = Double.POSITIVE_INFINITY;
+    double secondClosestDistanceYet = Double.POSITIVE_INFINITY;
     for (Stop candidateStop : candidates) { 
       double candidateDistance = latestStop.distance_m(candidateStop);
       if (candidateDistance < closestDistanceYet) {
+        secondClosestStopYet = closestStopYet;
+        secondClosestDistanceYet = closestDistanceYet;
         closestStopYet = candidateStop;
         closestDistanceYet = candidateDistance;
+      } else if (candidateDistance < secondClosestDistanceYet) {
+        secondClosestStopYet = candidateStop;
+        secondClosestDistanceYet = candidateDistance;
       }
     }
-    return closestStopYet;
+    return new Stop[]{closestStopYet, secondClosestStopYet};
   }
+  /**
+   * Max distance in meters between two stops with same name on same route,
+   * between stops on opposite sides of street/square/plaza.
+   */
+  private static final double MAX_STOP_PAIR_DISTANCE_m = 200.0;
+  /**
+   * From candidates, select a close stop, preferring one
+   * that appears to be on trafficSide when looking from latestStop. </p>
+   *
+   * If the distance between the two closest stops is greater than
+   * MAX_STOP_PAIR_DISTANCE, then just choose the closest stop. <p/>
+   *
+   * If the distance between the two closest stops is 0, then
+   * just return one of the stops. <p/>
+   *
+   * Otherwise choose, from the two closest candidates stops, the one
+   * which is on trafficSide when looking from latestStop. <p/>
+   *
+   * (Rationale: assume terminus is a single stop, and other stops may
+   * come in pairs on opposite sides of the street.  Choose the stop
+   * in the pair that is on the same side of the street as the traffic
+   * when traveling from latestStop to the stop.  This heuristic
+   * should work for routes that are mostly straight, but might be
+   * incorrect after turning a corner.)
+   *
+   * @param latestStop the latest matched stop.
+   * @param candidates the candidate stops that match the name of the next stop.
+   * @param trafficSide left or right (traffic travels on this side of road)
+   * @param logLevel level at which to log match messages
+   * @param logReason start of log message; explains how candidates were found.
+   */
+  private Stop selectCloseStopOnTrafficSide(Stop latestStop,
+                                            Set<Stop> candidates,
+                                            Level logLevel, String logReason) {
+    assert candidates.size() >= 2;
+    Stop[] twoClosestStops = selectClosest2Stops(latestStop, candidates);
+    Stop stop0 = twoClosestStops[0], stop1 = twoClosestStops[1];
+    double distBetween = stop0.distance_m(stop1);
+    if (distBetween > MAX_STOP_PAIR_DISTANCE_m) {
+      if (LOG.isLoggable(logLevel)) 
+        LOG.log(logLevel, logReason+"; subsituting closest for now: "+
+                stop0.getId()+
+                " (next is "+Math.round(distBetween)+"m further).");
+      return stop0;
+    }
+    if (distBetween == 0.0) {
+      LOG.warning("Found two stops at same position, choosing first: "+
+                  stop0.getId()+", "+stop1.getId());
+      return stop0;
+    }
+      
+    double dir0 = latestStop.direction_deg(stop0);
+    double dir1 = latestStop.direction_deg(stop1);
+
+    double dirDiff = dir0 - dir1;
+    // normalize into interval [-PI, +PI)
+    if (dirDiff < -Math.PI)
+      dirDiff += 2*Math.PI;
+    else if (dirDiff >= Math.PI)
+      dirDiff -= 2*Math.PI;
+
+    if (dirDiff == 0) {
+      if (LOG.isLoggable(logLevel)) 
+        LOG.log(logLevel, logReason+ "; substituting closest for now: "+
+                stop0.getId()+ " (next is at same angle from previous stop)");
+      return stop0; // rare: aligned, just pick closest for now.
+    } 
+
+    Stop result;
+    switch(this.trafficSide) {
+      case LEFT:  result = (dirDiff > 0 ? stop1 : stop0); break;
+      case RIGHT: result = (dirDiff < 0 ? stop1 : stop0); break;
+      default: throw new AssertionError(this.trafficSide);
+    }
+    if (LOG.isLoggable(logLevel)) 
+      LOG.log(logLevel, logReason+ "; substituting closest on "+
+              this.trafficSide.name().toLowerCase()+
+              " from previous stop for now: "+ result.getId());
+    return result;
+  }
+  /**
+   * Left or right: traffic travels on this side of a bidirectional way.
+   */
+  public enum TrafficSide { LEFT, RIGHT }
 
   private Element selectElement(File xmlFile, String xpathExpression) {
     try { 
