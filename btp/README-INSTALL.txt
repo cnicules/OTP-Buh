@@ -231,15 +231,19 @@ INSTALLATION
      cd /otp/webapps/
      sudo patch -l -p 1 -i ~/btp/src/main/otp/p01-webapp-englishToSIUnits.patch
      sudo patch -l -p 1 -i ~/btp/src/main/otp/p02-webapp-mapDefaultExtent.patch
+     sudo patch -l -p 1 -i ~/btp/src/main/otp/p02b-webapp-fixMapZoomToDefaultExtent.patch
      sudo patch -l -p 1 -i ~/btp/src/main/otp/p03-webapp-localeDateTime.patch
      sudo patch -l -p 1 -i ~/btp/src/main/otp/p04-webapp-englishIntlTime.patch
+     sudo patch -l -p 1 -i ~/btp/src/main/otp/p05-webapp-omitFareIfNegOrMaxInt.patch
 
    Tomcat6 server: (CATALINA_BASE/webapps)
      cd /var/lib/tomcat6/webapps/
      sudo patch -l -p 1 -i ~/btp/src/main/otp/p01-webapp-englishToSIUnits.patch
      sudo patch -l -p 1 -i ~/btp/src/main/otp/p02-webapp-mapDefaultExtent.patch
+     sudo patch -l -p 1 -i ~/btp/src/main/otp/p02b-webapp-fixMapZoomToDefaultExtent.patch
      sudo patch -l -p 1 -i ~/btp/src/main/otp/p03-webapp-localeDateTime.patch
      sudo patch -l -p 1 -i ~/btp/src/main/otp/p04-webapp-englishIntlTime.patch
+     sudo patch -l -p 1 -i ~/btp/src/main/otp/p05-webapp-omitFareIfNegOrMaxInt.patch
 
    (If your version of the patch command is picky, the -l option may
     not ignore the carriage-returns at the ends of some source lines.

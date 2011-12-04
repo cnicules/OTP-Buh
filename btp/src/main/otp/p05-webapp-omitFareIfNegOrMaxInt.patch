@@ -1,0 +1,12 @@
+--- a/opentripplanner-webapp/js/otp/planner/Templates.js
++++ b/opentripplanner-webapp/js/otp/planner/Templates.js
+@@ -113,7 +113,8 @@
+                 '<div id="trip-details">',
+                 '<h3>' + this.locale.labels.trip_details + '</h3>',
+                 '<table cellpadding="3" cellspacing="0" border="0">',
+-                    '<tpl if="regularFare != null">',
++                    // show fare if not small multiple of Integer.MAX_VALUE
++                    '<tpl if="regularFare != null && !/-|21.?474.?836.?4[0-7]/.test(regularFare)">',
+                       '<tr><td><strong>' + this.locale.labels.fare        + '</strong></td><td>{regularFare}</td></tr></tpl>',
+                       '<tr><td><strong>' + this.locale.labels.travel      + '</strong></td><td>{[this.dateTime(values.startTime)]}</td></tr>',
+                       '<tr><td><strong>' + this.locale.labels.valid       + '</strong></td><td>{[new Date().format("' + this.locale.time.format + '")]}</td></tr>',

@@ -1,0 +1,15 @@
+--- a/opentripplanner-webapp/js/otp/core/Map.js
++++ b/opentripplanner-webapp/js/otp/core/Map.js
+@@ -173,7 +173,11 @@
+             if(this.defaultExtent && this.defaultExtent !== 'automatic')
+             {
+                 this.zoomToExtent(this.defaultExtent.transform(this.dataProjection, this.map.getProjectionObject()));
+-                this.map.zoomTo(this.CLOSE_ZOOM - 7)
++
++            }
++            else
++            {
++                this.map.zoomTo(this.CLOSE_ZOOM - 7);
+             }
+         }
+         catch(e)
