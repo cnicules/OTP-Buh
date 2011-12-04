@@ -1,178 +1,54 @@
-<project name="btp-osm" default="build" basedir=".">
+<project name="btp-osm" default="osm-build" basedir=".">
   <!-- This file is imported by build.xml. -->
 
   <!-- directories -->
-  <property name="src.dir" value="${base.dir}/src/main/osm"/>
-
   <property name="osm.build.dir" value="${build.dir}/osm"/>
   <property name="osm.dl.dir" value="${dl.dir}/osm"/>
 
   <!-- result file -->
   <property name="build.bucharest.osm" value="${osm.build.dir}/bucharest.osm"/>
 
-  <!-- urls -->
-  <property name="osm.api.url"
-    value="http://api.openstreetmap.org/api/0.6/map"/>
-  <property name="lat0" value="44.33"/>
-  <property name="lat1" value="44.40"/>
-  <property name="lat2" value="44.47"/>
-  <property name="lat3" value="44.61"/>
-  <property name="lon0" value="25.95"/>
-  <property name="lon1" value="26.05"/>
-  <property name="lon2" value="26.15"/>
-  <property name="lon3" value="26.25"/>
+  <import file="build-osm-whole.xml"/>
+  <import file="build-osm-parts.xml"/>
+  <import file="build-osm-fixes.xml"/>
 
-  <!-- osmosis.home.dir defined by build.properties -->
+  <target name="osm-build" depends="osm-get-city,osm-fixes-merge"/>
 
-  <!--
-     *    OpenStreetMap OSM files
-   -->
-  <property name="crangasi.osm"
-    value="${src.dir}/bucharest-crangasi-additions.osm"/>
-  <property name="dristor.osm"
-    value="${src.dir}/bucharest-dristor-additions.osm"/>
-  <property name="grozavesti.osm"
-    value="${src.dir}/bucharest-grozavesti-additions.osm"/>
-  <property name="titan.osm"
-    value="${src.dir}/bucharest-titan-additions.osm"/>
-  <property name="unirii.osm"
-    value="${src.dir}/bucharest-piata-unirii-additions.osm"/>
-  <property name="victoriei.osm"
-    value="${src.dir}/bucharest-piata-victoriei-additions.osm"/>
+  <target name="osm-get-city"
+    description="get bucharest.osm depending on osm.sourceType">
+    <!-- osm.sourceType for bucharest.osm from file build.properties:
+         'whole' download whole country.osm.pbf then extract bucharest.osm
+         'parts' download parts of bucharest from api.bucharest.org and merge
+         'copy'  copy bucharest.osm from bucharest.prepared.osm -->
 
-  <property name="center.osm"
-     value="${osm.dl.dir}/map_lat+${lat1}_+${lat2}_lon+${lon1}_+${lon2}.osm"/>
-  <property name="SW-S-SE.osm"
-     value="${osm.dl.dir}/map_lat+${lat0}_+${lat1}_lon+${lon0}_+${lon3}.osm"/>
-  <property name="W-NW.osm"
-     value="${osm.dl.dir}/map_lat+${lat1}_+${lat3}_lon+${lon0}_+${lon1}.osm"/>
-  <property name="N.osm"
-     value="${osm.dl.dir}/map_lat+${lat2}_+${lat3}_lon+${lon1}_+${lon2}.osm"/>
-  <property name="E-NE.osm"
-     value="${osm.dl.dir}/map_lat+${lat1}_+${lat3}_lon+${lon1}_+${lon2}.osm"/>
-
-  <target name="osm-download-bucharest"
-    description="Get any missing region osms from OpenStreetMap.org">
-    
-    <outofdate>
-      <targetfiles>
-        <pathelement path="${center.osm}"/>
-        <pathelement path="${SW-S-SE.osm}"/>
-        <pathelement path="${W-NW.osm}"/>
-        <pathelement path="${N.osm}"/>
-        <pathelement path="${E-NE.osm}"/>
-      </targetfiles>
-      <sourcefiles/>
-      <sequential>
-        <mkdir dir="${osm.dl.dir}"/>
-
-        <!-- middle is densest, largest, most likely to fail: do it first -->
-        <get src="${osm.api.url}?bbox=${lon1},${lat1},${lon2},${lat2}"
-             dest="${center.osm}" skipexisting="true" verbose="on"/>
-
-        <get src="${osm.api.url}?bbox=${lon0},${lat0},${lon3},${lat1}"
-             dest="${SW-S-SE.osm}" skipexisting="true" verbose="on"/>
-
-        <get src="${osm.api.url}?bbox=${lon0},${lat1},${lon1},${lat3}"
-             dest="${W-NW.osm}" skipexisting="true" verbose="on"/>
-        <get src="${osm.api.url}?bbox=${lon1},${lat2},${lon2},${lat3}"
-             dest="${N.osm}" skipexisting="true" verbose="on"/>
-        <get src="${osm.api.url}?bbox=${lon2},${lat1},${lon3},${lat3}"
-             dest="${E-NE.osm}" skipexisting="true" verbose="on"/>
-      </sequential>
-    </outofdate>
-  </target>
-
-  <target name="osm-remove-center"
-    description="Remove central Bucharest map to force download">
-    <delete file="${center.osm}" quiet="true"/>
-  </target>
-  <target name="osm-remove-s"
-    description="Remove SW,S,SE Bucharest map to force download">
-    <delete file="${SW-S-SE.osm}" quiet="true"/>
-  </target>
-  <target name="osm-remove-w-nw"
-    description="Remove W,NW Bucharest map to force download">
-    <delete file="${W-NW.osm}" quiet="true"/>
-  </target>
-  <target name="osm-remove-n"
-    description="Remove N. Bucharest map to force download">
-    <delete file="${N.osm}" quiet="true"/>
-  </target>
-  <target name="osm-remove-e-ne"
-    description="Remove E,NE Bucharest map to force download">
-    <delete file="${E-NE.osm}" quiet="true"/>
-  </target>
-  <target name="osm-remove-all"
-    depends="osm-remove-center,osm-remove-s,osm-remove-w-nw,osm-remove-n,osm-remove-e-ne"
-    description="Remove all downloaded maps to force new downloads">
-  </target>
-  
-  <target name="osm-build" depends="osm-merge,osm-copy"/>
-
-  <target name="osm-merge"
-    description="Merge downloaded osms and additions into bucharest.osm"
-    depends="check-build.properties,osm-download-bucharest"
-    unless="bucharest.prepared.osm">
-
-    <outofdate>
-      <targetfiles path="${build.bucharest.osm}"/>
-      <sourcefiles>
-        <pathelement path="${center.osm}"/>
-        <pathelement path="${SW-S-SE.osm}"/>
-        <pathelement path="${W-NW.osm}"/>
-        <pathelement path="${N.osm}"/>
-        <pathelement path="${E-NE.osm}"/>
-
-        <pathelement path="${crangasi.osm}"/>
-        <pathelement path="${dristor.osm}"/>
-        <pathelement path="${grozavesti.osm}"/>
-        <pathelement path="${titan.osm}"/>
-        <pathelement path="${unirii.osm}"/>
-        <pathelement path="${victoriei.osm}"/>
-      </sourcefiles>
-      <sequential>
-        <mkdir dir="${osm.build.dir}"/>
-
-        <java classname="org.codehaus.classworlds.Launcher"
-          fork="true" inputstring="" failonerror="true">
-          <classpath>
-            <fileset dir="${osmosis.home.dir}/lib/default/">
-              <include name="plexus-classworlds-*.jar"/>
-            </fileset>
-          </classpath>
-          <sysproperty key="app.home" value="${osmosis.home.dir}"/>
-          <sysproperty key="classworlds.conf"
-            value="${osmosis.home.dir}/config/plexus.conf"/>
-
-          <arg value="--rx"/> <arg file="${center.osm}"/> <arg value="--sort"/>
-          <arg value="--rx"/> <arg file="${SW-S-SE.osm}"/> <arg value="--sort"/>
-          <arg value="--merge"/>
-          <arg value="--rx"/> <arg file="${W-NW.osm}"/><arg value="--sort"/>
-          <arg value="--rx"/> <arg file="${E-NE.osm}"/><arg value="--sort"/>
-          <arg value="--merge"/>
-          <arg value="--merge"/>
-          <arg value="--rx"/> <arg file="${N.osm}"/><arg value="--sort"/>
-          <arg value="--merge"/>
-
-          <arg value="--rx"/> <arg file="${crangasi.osm}"/><arg value="--sort"/>
-          <arg value="--rx"/> <arg file="${dristor.osm}"/><arg value="--sort"/>
-          <arg value="--merge"/>
-          <arg value="--rx"/> <arg file="${grozavesti.osm}"/><arg value="--sort"/>
-          <arg value="--rx"/> <arg file="${titan.osm}"/><arg value="--sort"/>
-          <arg value="--merge"/>
-          <arg value="--merge"/>
-          <arg value="--rx"/> <arg file="${unirii.osm}"/><arg value="--sort"/>
-          <arg value="--rx"/> <arg file="${victoriei.osm}"/><arg value="--sort"/>
-          <arg value="--merge"/>
-          <arg value="--merge"/>
-
-          <arg value="--merge"/>
-          <arg value="--wx"/> <arg file="${build.bucharest.osm}"/>
-        </java>
-        <echo>${build.bucharest.osm}</echo>
-      </sequential>
-    </outofdate>
+    <!-- default if osm.sourceType is not set:
+         if bucharest.prepared.osm is set, then 'copy' else 'whole' -->
+    <if>
+      <not><isset property="osm.sourceType"/></not>
+      <then>
+        <if>
+          <isset property="bucharest.prepared.osm"/>
+          <then><property name="osm.sourceType" value="copy"/></then>
+          <then><property name="osm.sourceType" value="whole"/></then>
+        </if>
+        <echo>osm.sourceType not set in build.properties, using '${osm.sourceType}'.</echo>
+      </then>
+    </if>
+    <if>
+      <equals arg1="${osm.sourceType}" arg2="copy" casesensitive="false"/>
+      <then><antcall target="osm-copy"/></then>
+      <elseif>
+        <equals arg1="${osm.sourceType}" arg2="whole" casesensitive="false"/>
+        <then><antcall target="osm-whole-extract-city"/></then>
+      </elseif>
+      <elseif>
+        <equals arg1="${osm.sourceType}" arg2="parts" casesensitive="false"/>
+        <then><antcall target="osm-parts-merge"/></then>
+      </elseif>
+      <else>
+        <fail message="Not 'copy' or 'whole' or 'parts': ${osm.sourceType}"/>
+      </else>
+    </if>
   </target>
 
   <target name="osm-copy"

@@ -25,7 +25,11 @@
     <property name="otpGraphBuilder-to-btpGraphBuilder.xslt"
       value="${base.dir}/src/main/xslt/otpGraphBuilder-to-btpGraphBuilder.xslt"/>
     <outofdate>
-      <targetfiles path="${graph-builder.xml}"/>
+      <targetfiles>
+        <pathelement path="${graph-builder.xml}"/>
+        <pathelement path="${otpGtfsInputs.xml}"/>
+        <pathelement path="${otpGtfsInputs.txt}"/>
+      </targetfiles>
       <sourcefiles>
         <pathelement path="${graph-builder.xml}.original"/>
         <pathelement path="${otpGraphBuilder-to-btpGraphBuilder.xslt}"/>

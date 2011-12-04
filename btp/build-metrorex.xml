@@ -12,9 +12,9 @@
   <!-- urls -->
 
   <property name="MetrorexWDScheduleURL"
-    value="http://www.metrorex.ro/operation_schedule__in_working_days_p77-2"/>
+    value="http://www.metrorex.ro/operation_schedule__in_working_days_p787-2"/>
   <property name="MetrorexWEScheduleURL"
-    value="http://www.metrorex.ro/operation_schedule__in_non-working_days_and_holidays_p83-2"/>
+    value="http://www.metrorex.ro/operation_schedule__in_non-working_days_and_holidays_p788-2"/>
 
   <!--
      *    Metrorex files
@@ -91,7 +91,7 @@
                     inputstring="" failonerror="true">
                     <arg value="${in}"/> <arg value="${out}"/>
                     <arg value="&lt;table"/>
-                    <arg value="Magistrala I:"/>
+                    <arg value="Line I:"/>
                     <arg value="&lt;/table&gt;"/>
                   </java>
                   <echo>${out}</echo>
@@ -112,7 +112,7 @@
                     inputstring="" failonerror="true">
                     <arg value="${in}"/> <arg value="${out}"/>
                     <arg value="&lt;table"/>
-                    <arg value="Magistrala II:"/>
+                    <arg value="Line II:"/>
                     <arg value="&lt;/table&gt;"/>
                   </java>
                   <echo>${out}</echo>
@@ -133,7 +133,7 @@
                     inputstring="" failonerror="true">
                     <arg value="${in}"/> <arg value="${out}"/>
                     <arg value="&lt;table"/>
-                    <arg value="Magistrala III:"/>
+                    <arg value="Line III:"/>
                     <arg value="&lt;/table&gt;"/>
                   </java>
                   <echo>${out}</echo>
@@ -154,7 +154,7 @@
                     inputstring="" failonerror="true">
                     <arg value="${in}"/> <arg value="${out}"/>
                     <arg value="&lt;table"/>
-                    <arg value="Magistrala IV:"/>
+                    <arg value="Line IV:"/>
                     <arg value="&lt;/table&gt;"/>
                   </java>
                   <echo>${out}</echo>

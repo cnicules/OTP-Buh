@@ -1,0 +1,88 @@
+<project name="btp-osm-fixes" default="osm-fixes-merge" basedir=".">
+  <!-- This file is imported by build-osm.xml. -->
+  <description>
+    Merge ${build.bucharest.osm} with custom additions.
+  </description>
+
+  <property name="src.osm.dir" value="${base.dir}/src/main/osm"/>
+
+  <!-- osmosis.home.dir defined by build.properties -->
+
+  <!--
+     *    OpenStreetMap OSM files
+   -->
+  <!-- custom additions -->
+  <property name="crangasi.osm"
+    value="${src.osm.dir}/bucharest-crangasi-additions.osm"/>
+  <property name="dristor.osm"
+    value="${src.osm.dir}/bucharest-dristor-additions.osm"/>
+  <property name="grozavesti.osm"
+    value="${src.osm.dir}/bucharest-grozavesti-additions.osm"/>
+  <property name="titan.osm"
+    value="${src.osm.dir}/bucharest-titan-additions.osm"/>
+  <property name="unirii.osm"
+    value="${src.osm.dir}/bucharest-piata-unirii-additions.osm"/>
+  <property name="victoriei.osm"
+    value="${src.osm.dir}/bucharest-piata-victoriei-additions.osm"/>
+
+  <target name="osm-fixes-merge"
+    description="Merge fixes into bucharest.osm"
+    depends="check-build.properties,osm-get-city"
+    if="osm.use-fixes">
+    <property name="build.bucharest-fixed.osm"
+      value="${osm.build.dir}/bucharest-fixed.osm"/>
+
+    <outofdate>
+      <targetfiles path="${build.bucharest-fixed.osm}"/>
+      <sourcefiles>
+        <pathelement path="${build.bucharest.osm}"/>
+
+        <pathelement path="${crangasi.osm}"/>
+        <pathelement path="${dristor.osm}"/>
+        <pathelement path="${grozavesti.osm}"/>
+        <pathelement path="${titan.osm}"/>
+        <pathelement path="${unirii.osm}"/>
+        <pathelement path="${victoriei.osm}"/>
+      </sourcefiles>
+      <sequential>
+        <java classname="org.codehaus.classworlds.Launcher"
+          fork="true" inputstring="" failonerror="true">
+          <classpath>
+            <fileset dir="${osmosis.home.dir}/lib/default/">
+              <include name="plexus-classworlds-*.jar"/>
+            </fileset>
+          </classpath>
+          <sysproperty key="app.home" value="${osmosis.home.dir}"/>
+          <sysproperty key="classworlds.conf"
+            value="${osmosis.home.dir}/config/plexus.conf"/>
+
+          <arg value="--rx"/> <arg file="${build.bucharest.osm}"/>
+
+          <arg value="--rx"/> <arg file="${crangasi.osm}"/><arg value="--sort"/>
+          <arg value="--rx"/> <arg file="${dristor.osm}"/><arg value="--sort"/>
+          <arg value="--merge"/>
+          <arg value="--rx"/> <arg file="${grozavesti.osm}"/><arg value="--sort"/>
+          <arg value="--rx"/> <arg file="${titan.osm}"/><arg value="--sort"/>
+          <arg value="--merge"/>
+          <arg value="--merge"/>
+          <arg value="--rx"/> <arg file="${unirii.osm}"/><arg value="--sort"/>
+          <arg value="--rx"/> <arg file="${victoriei.osm}"/><arg value="--sort"/>
+          <arg value="--merge"/>
+          <arg value="--merge"/>
+
+          <arg value="--merge"/>
+          <arg value="--wx"/> <arg file="${build.bucharest-fixed.osm}"/>
+        </java>
+
+        <!-- Keep same date so won't be out of date unless bucharest.osm updated
+             (or custom fix files are updated). -->
+        <copy preservelastmodified="true"
+          file="${build.bucharest-fixed.osm}" tofile="${build.bucharest.osm}"/>
+
+        <echo>${build.bucharest.osm}</echo>
+
+      </sequential>
+    </outofdate>
+  </target>
+
+</project>

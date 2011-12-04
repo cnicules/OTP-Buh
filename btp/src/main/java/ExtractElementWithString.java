@@ -54,6 +54,8 @@ public class ExtractElementWithString {
                           String contentString, String endTagString)
   throws IOException {
     String string = readAll(reader);
+    // nbsp may be inconsistently used, so normalize to space for matching
+    string = string.replaceAll("&nbsp;"," ");
     int contentIndex = string.indexOf(contentString);
     if (contentIndex == -1) throw new StringNotFoundException(contentString);
     int startIndex = string.lastIndexOf(startTagString, contentIndex);
@@ -74,7 +76,6 @@ public class ExtractElementWithString {
     element = element.replaceAll("</td>(</td>\\s*)+</tr>", "</td></tr>");
     element = element.replaceAll("<b></td>", "</b></td>");
     // replace entities
-    element = element.replaceAll("&nbsp;","&#xA0;");
     element = element.replaceAll("&ndash;","&#x2013;");
     //element = element.replaceAll("&mdash;","&#x2014;");
 

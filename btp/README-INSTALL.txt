@@ -94,16 +94,36 @@ INSTALLATION
 2. Create btp/build.properties file (or copy from an old btp directory):
     osmosis.home.dir = /PATH-TO-INSTALL-DIR/osmosis-0.39
     otp.home.dir = /PATH-TO-INSTALL-DIR/otp
+
+    # osm.sourceType for bucharest.osm
+    # 'whole' -- download whole country.osm.pbf then extract bucharest.osm
+    # 'parts' -- download parts of bucharest from api.bucharest.org and merge.
+    # 'copy'  -- copy bucharest.osm from bucharest.prepared.osm
+    osm.sourceType = copy
+
+    # optional, for osm.sourceType copy
+    bucharest.prepared.osm = ../bucuresti-20110928.osm
+
+    # optional: if defined, merges src/main/osm fixes; 
+    #           to skip fixes, comment it out.
+    # osm.use-fixes = true
+
   ** Example:
     osmosis.home.dir = /usr/local/share/osmosis-0.39
     otp.home.dir = /otp
 
- (optional bucharest.prepared.osm: by default the build will download and 
-  create the file "build/bucharest.osm" from api.opentripplanner.org 
-  if one does not exist.  If there is another local source for this file, 
-  add the following property to build.properties:
-    bucharest.prepared.osm = /PATH-TO-DIR/bucharest.osm
-  The file must be an osm file, but does not need to be named "bucharest.osm".)
+    # osm.sourceType for bucharest.osm
+    # 'whole' -- download whole country.osm.pbf then extract bucharest.osm
+    # 'parts' -- download parts of bucharest from api.bucharest.org and merge.
+    # 'copy'  -- copy bucharest.osm from bucharest.prepared.osm
+    osm.sourceType = copy
+
+    # optional, for osm.sourceType copy
+    bucharest.prepared.osm = ../bucuresti-20110928.osm
+
+    # optional: if defined, merges src/main/osm fixes; 
+    #           to skip fixes, comment it out.
+    # osm.use-fixes = true
 
 3. (optional) To reuse previously downloaded schedule and map files,
    copy them to new directory:

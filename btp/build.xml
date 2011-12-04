@@ -85,6 +85,9 @@
         <fileset dir="${base.dir}/.." includes="btp/ant.cmd"/>
         <fileset dir="${base.dir}/.." includes="btp/build.xml"/>
         <fileset dir="${base.dir}/.." includes="btp/build-osm.xml"/>
+        <fileset dir="${base.dir}/.." includes="btp/build-osm-whole.xml"/>
+        <fileset dir="${base.dir}/.." includes="btp/build-osm-parts.xml"/>
+        <fileset dir="${base.dir}/.." includes="btp/build-osm-fixes.xml"/>
         <fileset dir="${base.dir}/.." includes="btp/build-metrorex.xml"/>
         <fileset dir="${base.dir}/.." includes="btp/build-ratbtram.xml"/>
         <fileset dir="${base.dir}/.." includes="btp/build-ratbtrob.xml"/>
@@ -107,6 +110,9 @@
           <fileset dir="${base.dir}/.." includes="btp/ant.cmd"/>
           <fileset dir="${base.dir}/.." includes="btp/build.xml"/>
           <fileset dir="${base.dir}/.." includes="btp/build-osm.xml"/>
+          <fileset dir="${base.dir}/.." includes="btp/build-osm-whole.xml"/>
+          <fileset dir="${base.dir}/.." includes="btp/build-osm-parts.xml"/>
+          <fileset dir="${base.dir}/.." includes="btp/build-osm-fixes.xml"/>
           <fileset dir="${base.dir}/.." includes="btp/build-metrorex.xml"/>
           <fileset dir="${base.dir}/.." includes="btp/build-ratbtram.xml"/>
           <fileset dir="${base.dir}/.." includes="btp/build-ratbtrob.xml"/>
@@ -132,8 +138,19 @@
       The build.properties file should look similar to: &#xA;
         osmosis.home.dir = /PATH-TO-INSTALL-DIR/osmosis-0.39 &#xA;
         otp.home.dir = /PATH-TO-INSTALL-DIR/otp &#xA;
-      optional property (omit or comment out to download new buchartest.osm):
-        bucharest.prepared.osm = /PATH-TO-DIR/bucuresti-daily.osm">
+        &#xA;
+        # osm.sourceType for bucharest.osm&#xA;
+        # 'whole' -- download whole country.osm.pbf; extract bucharest.osm &#xA;
+        # 'parts' -- download city parts from api.openstreetmap.org; merge &#xA;
+        # 'copy'  -- copy bucharest.osm from bucharest.prepared.osm &#xA;
+        osm.sourceType: copy &#xA;
+        &#xA;
+        # optional, for osm.sourceType copy &#xA;
+        bucharest.prepared.osm: ../bucuresti-20110928.osm &#xA;
+        &#xA;
+        # optional: if defined, merge src/main/osm fixes; &#xA;
+        #           to skip, comment it out. &#xA;
+        # osm.use-fixes: true">
       <condition>
         <not><available file="${base.dir}/build.properties" type="file"/></not>
       </condition>
