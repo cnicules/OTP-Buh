@@ -8,8 +8,10 @@ import java.io.UnsupportedEncodingException;
 
 import java.text.Collator;
 import java.text.CollationKey;
+import java.text.MessageFormat;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -253,87 +255,54 @@ public class GenerateStopTimesWithConstantInterval {
     catch (UnsupportedEncodingException never) { throw new Error(never); }
     PrintWriter pw = new PrintWriter(outWriter);
     pw.println("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+    pw.println("<!-- note: unmatched stops re-use prior (or next) stop_id -->");
     pw.println("<stop-times>");
 
     NodeList tripNodeList = selectElements(this.tripsXml, "/trips/trip");
+    Element stopSequences = selectElement(this.stopSeqsXml, "/stop-sequences");
     tripLoop:
     for (int i = 0; i < tripNodeList.getLength(); i++) {
       Element tripElement = (Element) tripNodeList.item(i);
       String tripId = tripElement.getAttribute("trip_id");
+      String tripRteIdAttr = tripElement.getAttribute("route_id");
       String tripRteName = tripElement.getAttribute("route_short_name");
+      String tripSvc = tripElement.getAttribute("service_id");
       String tripDirAttr = tripElement.getAttribute("direction_id");
       String tripDir = ("0".equals(tripDirAttr) ? "forward" :
                         "1".equals(tripDirAttr) ? "backward" : null);
       String tripBeginStopName = tripElement.getAttribute("beginStop");
       String tripEndStopName   = tripElement.getAttribute("endStop");
+      Long tripRteId = null;
+      try { tripRteId = Long.valueOf(tripRteIdAttr); }
+      catch (NumberFormatException ex) {
+        LOG.log(Level.SEVERE,
+                "Trip "+tripId+" contains invalid route_id: "+tripRteIdAttr,
+                logParams(LogMsg.TRIP_ROUTE_ID_INVALID,
+                          new RouteInfo(tripRteName, null, tripDir, null, null),
+                          tripSvc, tripId));
+      }
+      RouteInfo routeInfo =
+        makeTripRouteInfo(stopSequences, tripId, tripRteId, tripRteName,
+                          tripDir, tripBeginStopName, tripEndStopName);
+      if (routeInfo == null) { // could not find routeInfo (logged problem)
+        continue tripLoop;
+      }
       if (tripDir == null) {
-        LOG.severe("trip "+tripId+" direction "+ tripDirAttr+
-                   " is not 0 or 1.");
+        LOG.log(Level.SEVERE,
+                "trip "+tripId+" direction "+ tripDirAttr+" is not 0 or 1.",
+                logParams(LogMsg.TRIP_ROUTE_DIR_INVALID,
+                          routeInfo, tripSvc, tripId));
         continue tripLoop;
       }
-      Map<String, List<List<Stop>>> routeSequences =
-        this.stopsFromSched.get(tripRteName);
-      if (routeSequences == null) {
-        LOG.warning("skipping trip "+tripId+
-                    " because no located stops found for route "+
-                    tripRteName);
-        continue tripLoop;
-      }
-      Duration tripDur = new Duration();
-      List<List<Stop>> tripsStopSeqs = routeSequences.get(tripDir);
-      if (tripsStopSeqs == null) {
-        LOG.warning("skipping trip "+tripId+
-                    " because no located stops found for route "+
-                    tripRteName+ " and direction "+tripDir+".");
-        continue tripLoop;
-      }
-      List<Stop> tripStops = null;
-      if (tripsStopSeqs.size() == 1) {
-        tripStops = tripsStopSeqs.get(0);
-      } else { 
-        findTripStop:
-        for (List<Stop> stopSeq : tripsStopSeqs) {
-          int lastIndex = stopSeq.size() - 1;
-          String seqBeginStopName = stopSeq.get(0).getName();
-          String seqEndStopName = stopSeq.get(lastIndex).getName();
-          if ("forward".equals(tripDir)) {
-            if (tripBeginStopName.equalsIgnoreCase(seqBeginStopName) &&
-                tripEndStopName.equalsIgnoreCase(seqEndStopName)) {
-              tripStops = stopSeq;
-              break findTripStop;
-            }
-          } else if ("backward".equals(tripDir)) {
-            if (tripBeginStopName.equalsIgnoreCase(seqEndStopName) &&
-                tripEndStopName.equalsIgnoreCase(seqBeginStopName)) {
-              tripStops = stopSeq;
-              break findTripStop;
-            }
-          }
-        }
-      }
+      List<Stop> tripStops = getTripStops(routeInfo, 
+                                          tripBeginStopName, tripEndStopName,
+                                          tripSvc, tripId);
       if (tripStops == null) {
-        StringBuilder sb = new StringBuilder("[");
-        int initialLength = sb.length();
-        for (List<Stop> tripStopSeq : tripsStopSeqs) {
-          if (sb.length() > initialLength)
-            sb.append(", ");
-          int lastIndex = tripStopSeq.size() - 1;
-          String seqBeginStopName = tripStopSeq.get(0).getName();
-          String seqEndStopName = tripStopSeq.get(lastIndex).getName();
-          if ("forward".equals(tripDir)) {
-            sb.append("("+seqBeginStopName+", "+ seqEndStopName+")");
-          } else if ("backward".equals(tripDir)) {
-            sb.append("("+seqEndStopName+", "+ seqBeginStopName+")");
-          }
-        }
-        sb.append("]");
-        LOG.severe("skipping trip "+tripId+
-                   " because no trips found that run "+tripDir+ " between "+
-                   tripBeginStopName+ " and "+tripEndStopName+": "+sb);
-        continue tripLoop;
+        continue tripLoop; // could not find stops (and logged problem)
       }
 
       String headSign = tripStops.get(tripStops.size() - 1).getName();
+      Duration tripDur = new Duration();
       for (int j = 0; j < tripStops.size(); j++) {
         Stop stop = tripStops.get(j);
         assert stop != null;
@@ -353,7 +322,166 @@ public class GenerateStopTimesWithConstantInterval {
     pw.println("</stop-times>");
     pw.close();
   }
+  private RouteInfo makeTripRouteInfo(Element stopSequences,
+                                      String tripId, Long tripRteId,
+                                      String tripRteName, String tripDir,
+                                      String tripBeginStopName,
+                                      String tripEndStopName) {
+    String tripDirBeginStopName =
+      "forward".equals(tripDir)? tripBeginStopName : tripEndStopName;
+    String tripDirEndStopName = 
+      "backward".equals(tripDir)? tripBeginStopName : tripEndStopName;
+    Element stopSeqElement =
+      selectElement
+      (stopSequences,
+       ("route[@short_name='"+tripRteName+"']/"+
+        "stop-sequence[@dir='"+tripDir+"' and "
+        +             "stop[1]/@name='"+tripDirBeginStopName+"' and "
+        +             "stop[last()]/@name='"+tripDirEndStopName+"']"));
+    boolean logChoseOnlySeqElement = false;
+    if (stopSeqElement == null) { 
+      NodeList routes =
+        selectElements(stopSequences, "route[@short_name='"+tripRteName+"']");
+      if (routes.getLength() == 1) {
+        // single trip on same line: select it by direction
+        // (more robust in case begin/end stops are spelled differently)
+        // (may happen when frequencies and stopSeqs are not generated from
+        // same source, or there is a spelling disagreement within the page).
+        stopSeqElement = 
+          selectElement(stopSequences,
+                        "route[@short_name='"+tripRteName+"']/"+
+                        "stop-sequence[@dir='"+tripDir+"']");
+        logChoseOnlySeqElement = true;
+      }
+    }
+    if (stopSeqElement == null) {
+      LOG.log(Level.SEVERE,
+              ("Trip "+tripId+": No stop sequence found from "+
+               "\""+tripDirBeginStopName+"\" to \""+ tripDirEndStopName+"\"."),
+              logParams(LogMsg.TRIP_ROUTE_STOP_SEQ_NOT_FOUND,
+                        new RouteInfo(tripRteName, tripRteId, tripDir,
+                                      null, null)));
+      return null;
+    }
+    Integer[] beginEndSeqNrs;
+    try {
+      beginEndSeqNrs = getBeginEndSeqNrs(stopSeqElement,
+                                         tripRteName, tripDir);
+    } catch (NumberFormatException ex) {
+      LOG.log(Level.SEVERE, ex.getMessage(),
+              logParams(LogMsg.TRIP_ROUTE_STOP_SEQ_NUMBERS_NOT_FOUND,
+                        new RouteInfo(tripRteName, tripRteId, tripDir,
+                                      null, null)));
+      return null;
+    }
+    RouteInfo routeInfo =
+      new RouteInfo(tripRteName, tripRteId, tripDir,
+                    beginEndSeqNrs[0], beginEndSeqNrs[1]);
+    if (logChoseOnlySeqElement) {
+      String seqBeginStopName =
+        selectAttribute(stopSeqElement, "stop[1]/@name");
+      String seqEndStopName = 
+        selectAttribute(stopSeqElement, "stop[last()]/@name");
+      if (!tripDirBeginStopName.equals(seqBeginStopName)) {
+        LOG.log(Level.FINEST,
+                ("Ignored spelling difference between\n"+
+                 "\""+tripDirBeginStopName+"\" from trip "+tripId+
+                 " frequencies, and\n"+
+                 "\""+seqBeginStopName+ "\" that begins the only "+
+                 this.routeType+" "+tripRteName+" "+tripDir+" stop-sequence."),
+                logParams(LogMsg.SCHED_STOP_MATCHED_TO_ONLY_SEQ_BEGIN,
+                          routeInfo, beginEndSeqNrs[0]));
+      }
+      if (!tripDirEndStopName.equals(seqEndStopName)) {
+        LOG.log(Level.FINEST,
+                ("Ignored spelling difference between\n"+
+                 "\""+tripDirEndStopName+"\" from trip "+tripId+
+                 " frequencies, and\n"+
+                 "\""+ seqEndStopName+ "\" that ends the only "+
+                 this.routeType+" "+tripRteName+" "+tripDir+" stop-sequence."),
+                logParams(LogMsg.SCHED_STOP_MATCHED_TO_ONLY_SEQ_END,
+                          routeInfo, beginEndSeqNrs[1]));
+      }
+    }
 
+    return routeInfo;
+  }
+  private List<Stop> getTripStops(RouteInfo routeInfo,
+                                  String tripBeginStopName,
+                                  String tripEndStopName,
+                                  String tripSvc, String tripId) {
+    String tripRteName = routeInfo.name, tripDir = routeInfo.dir;
+
+    Map<String, List<List<Stop>>> routeSequences =
+      this.stopsFromSched.get(tripRteName);
+    if (routeSequences == null) {
+      LOG.log(Level.WARNING,
+              ("skipping trip "+tripId+
+               " because no located stops found for route "+tripRteName),
+              logParams(LogMsg.TRIP_ROUTE_HAS_NO_LOCATED_STOPS,
+                        routeInfo, tripSvc, tripId));
+      return null;
+    }
+    List<List<Stop>> tripsStopSeqs = routeSequences.get(tripDir);
+    if (tripsStopSeqs == null) {
+      LOG.log(Level.WARNING,
+              ("skipping trip "+tripId+
+               " because no located stops found for route "+
+               tripRteName+ " and direction "+tripDir+"."),
+              logParams(LogMsg.TRIP_ROUTE_DIR_HAS_NO_LOCATED_STOPS,
+                        routeInfo, tripSvc, tripId));
+      return null;
+    }
+    List<Stop> tripStops = null;
+    if (tripsStopSeqs.size() == 1) {
+      tripStops = tripsStopSeqs.get(0);
+    } else { 
+      findTripStop:
+      for (List<Stop> stopSeq : tripsStopSeqs) {
+        int lastIndex = stopSeq.size() - 1;
+        String seqBeginStopName = stopSeq.get(0).getName();
+        String seqEndStopName = stopSeq.get(lastIndex).getName();
+        if ("forward".equals(tripDir)) {
+          if (tripBeginStopName.equalsIgnoreCase(seqBeginStopName) &&
+              tripEndStopName.equalsIgnoreCase(seqEndStopName)) {
+            tripStops = stopSeq;
+            break findTripStop;
+          }
+        } else if ("backward".equals(tripDir)) {
+          if (tripBeginStopName.equalsIgnoreCase(seqEndStopName) &&
+              tripEndStopName.equalsIgnoreCase(seqBeginStopName)) {
+            tripStops = stopSeq;
+            break findTripStop;
+          }
+        }
+      }
+    }
+    if (tripStops == null) {
+      StringBuilder sb = new StringBuilder("[");
+      int initialLength = sb.length();
+      for (List<Stop> tripStopSeq : tripsStopSeqs) {
+        if (sb.length() > initialLength)
+          sb.append(", ");
+        int lastIndex = tripStopSeq.size() - 1;
+        String seqBeginStopName = tripStopSeq.get(0).getName();
+        String seqEndStopName = tripStopSeq.get(lastIndex).getName();
+        if ("forward".equals(tripDir)) {
+          sb.append("("+seqBeginStopName+", "+ seqEndStopName+")");
+        } else if ("backward".equals(tripDir)) {
+          sb.append("("+seqEndStopName+", "+ seqBeginStopName+")");
+        }
+      }
+      sb.append("]");
+      LOG.log(Level.SEVERE,
+              ("skipping trip "+tripId+
+               " because no trips found that run "+tripDir+ " between "+
+               tripBeginStopName+ " and "+tripEndStopName+": "+sb),
+              logParams(LogMsg.TRIP_ROUTE_STOP_SEQ_NOT_FOUND,
+                        routeInfo, tripSvc));
+      return null;
+    }
+    return tripStops;
+  }
 
   /**
    * Index of stops by map id.
@@ -495,16 +623,46 @@ public class GenerateStopTimesWithConstantInterval {
   protected void locateScheduledStops() {
     this.stopsFromSched.clear();
     LoggedStopCounts counts = new LoggedStopCounts();
-    NodeList schedRouteNodeList =
-      selectElements(this.stopSeqsXml, "/stop-sequences/route");
+    Element stopSeqsRoot = selectElement(this.stopSeqsXml, "/stop-sequences");
+    NodeList schedRouteNodeList = selectElements(stopSeqsRoot, "route");
+    Element routeStopsElement =
+      selectElement(this.routeStopsXml, "/route-stops");
     for (int i = 0; i < schedRouteNodeList.getLength(); i++) {
-      Element schedRouteElement = (Element) schedRouteNodeList.item(i);
-      String routeName = schedRouteElement.getAttribute("short_name");
+      String routeName;
+      List<Element> schedRouteElements = new ArrayList<Element>(); {
+        Element firstSchedRouteElement = (Element) schedRouteNodeList.item(i);
+        routeName = firstSchedRouteElement.getAttribute("short_name");
+        schedRouteElements.add(firstSchedRouteElement);
+        for (; i+1 < schedRouteNodeList.getLength(); i++) {
+          Element nextRouteElement = (Element) schedRouteNodeList.item(i+1);
+          String nextName = nextRouteElement.getAttribute("short_name");
+          if (routeName.equals(nextName)) {
+            schedRouteElements.add(nextRouteElement);
+          } else break;
+        }
+      }
+
       Set<Stop> routeStops = this.stopsFromMapRoute.get(routeName);
       if (routeStops == null) {
-        LOG.severe("Route "+this.routeType+" "+routeName+
-                   " not found in OSM map.");
+        LOG.log(Level.SEVERE,
+                "Route "+this.routeType+" "+routeName+" not found in OSM map.",
+                logParams(LogMsg.SCHED_ROUTE_NOT_FOUND_IN_OSM, routeName));
         routeStops = Collections.emptySet();
+      }
+      Long routeId = null; {
+        Element routeElement =
+          selectElement(routeStopsElement,
+                        "route[@route_short_name='"+routeName+"']");
+        if (routeElement != null) { 
+          String mapRouteIdAttr = routeElement.getAttribute("route_id");
+          try { routeId = Long.valueOf(mapRouteIdAttr); }
+          catch (Exception ex) {
+            LOG.log(Level.SEVERE,
+                    ("Route "+this.routeType+" "+routeName+
+                     " has invalid route_id: "+ mapRouteIdAttr),
+                    logParams(LogMsg.MAP_ROUTE_ID_INVALID, routeName));
+          }
+        } // else SCHED_ROUTE_NOT_FOUND_IN_OSM already logged.
       }
 
       // may be multiple partial or local/express trips on a route
@@ -515,42 +673,160 @@ public class GenerateStopTimesWithConstantInterval {
         this.stopsFromSched.put(routeName, seqStopsMap);
       }
 
-      locateSchedRouteStops(schedRouteElement, routeName, routeStops,
+      locateSchedRouteStops(schedRouteElements, routeName, routeId, routeStops,
                             seqStopsMap, counts);
 
       if (seqStopsMap.isEmpty()) {
-        LOG.severe("Route "+this.routeType+" "+routeName+" has no located stops.");
+        LOG.log(Level.SEVERE,
+                "Route "+this.routeType+" "+routeName+" has no located stops.",
+                logParams(LogMsg.SCHED_ROUTE_HAS_NO_LOCATED_STOPS,
+                          routeName, routeId));
         // do not add to stopsFromSched.
         counts.routeSkipCount++;
       } else {
         this.stopsFromSched.put(routeName, seqStopsMap);
+        // does seqStopsMap contains any routeStops, or are all substitutes?
+        boolean hasRouteStop = false; {
+          findRouteStop:
+          for (List<List<Stop>> seqs : seqStopsMap.values()) {
+            for (List<Stop> seq : seqs) {
+              for (Stop stop : seq) {
+                if (routeStops.contains(stop)) {
+                  hasRouteStop = true;
+                  break findRouteStop;
+                }
+              }
+            }
+          }
+        }
+        if (!hasRouteStop) {
+          LOG.log(Level.FINE,
+                  ("Route "+this.routeType+" "+routeName+
+                   " has only stops substituted from other routes."),
+                  logParams(LogMsg.SCHED_ROUTE_HAS_ONLY_SUBST_STOPS,
+                            routeName, routeId));
+          counts.routeSubstCount++;
+        }
       }
     }
     // log summary counts
-    if (counts.routeSkipCount > 0)
-      LOG.info(counts.routeSkipCount+" "+this.routeType+" routes skipped.");
-    if (counts.seqSkipCount > 0)
-      LOG.info(counts.seqSkipCount+ " "+this.routeType+
-               " route direction sequences skipped.");
-    if (counts.missingStopCount > 0)
-      LOG.info(counts.missingStopCount+" scheduled stop names missing "+
-               "(or spelled differently) from all map "+
-               this.routeType+" routes.");
-    if (counts.sameNameStopSubstCount > 0)
-      LOG.info
-        (counts.sameNameStopSubstCount+
-         " scheduled stops substituted with stop with same name"+
-         " from another "+this.routeType+" route.");
-    if (counts.stopDupCount > 0)
-      LOG.info(counts.stopDupCount+" ambiguous/duplicate stops from all "+
-               this.routeType+" routes.");
-    if (counts.notBetweenNeighborsCount > 0)
-      LOG.info(counts.notBetweenNeighborsCount +
-               " stops are further from neighbors than distance between them: "+
-               "min(a-b, b-c) > a-c");
+    int schedRouteCount = countElements(stopSeqsRoot, "route");
+    int schedDirSeqCount = countElements(stopSeqsRoot, "route/stop-sequence");
+    int schedStopCount = countElements(stopSeqsRoot, "route/stop-sequence/stop");
+
+    LOG.log(counts.routeSkipCount > 0 ? Level.INFO : Level.FINE,
+            MessageFormat.format
+            ("{1} {0} route{1,choice,0#s|1#|1<s} skipped "+
+             "(out of {2} scheduled {0} route{2,choice,1#|1<s}).",
+             this.routeType, counts.routeSkipCount, schedRouteCount),
+            logParams(LogMsg.COUNT_OF_SKIPPED_ROUTE,
+                      counts.routeSkipCount, schedRouteCount));
+    LOG.log(counts.routeSubstCount > 0 ? Level.INFO : Level.FINE,
+            MessageFormat.format
+            ("{1} {0} route{1,choice,0#s|1#|1<s} "+
+             "only contain{1,choice,0#|1#s|1<} substitute stops "+
+             "(out of {2} scheduled {0} route{2,choice,1#|1<s}).",
+             this.routeType, counts.routeSubstCount, schedRouteCount),
+            logParams(LogMsg.COUNT_OF_SUBST_ROUTE,
+                      counts.routeSubstCount, schedRouteCount));
+    LOG.log(counts.seqSkipCount > 0 ? Level.INFO : Level.FINE,
+            MessageFormat.format
+            ("{1} {0} route stop sequence{1,choice,0#s|1#|1<s} skipped "+
+             "(out of {2} {0} route stop sequence{2,choice,0#s|1#|1<s}).",
+             this.routeType, counts.seqSkipCount, schedDirSeqCount),
+            logParams(LogMsg.COUNT_OF_SKIPPED_ROUTE_DIR,
+                      counts.seqSkipCount, schedDirSeqCount));
+    LOG.log(counts.missingStopCount > 0 ? Level.INFO : Level.FINE,
+            MessageFormat.format
+            ("{1} scheduled stop name{1,choice,0#s|1#|1<s} missing "+
+             "(or spelled differently) from all map {0} routes "+
+             "(out of {2} scheduled stop{2,choice,0#s|1#|1<s}).",
+             this.routeType, counts.missingStopCount, schedStopCount),
+            logParams(LogMsg.COUNT_OF_SCHED_STOP_NAMES_MISSED_IN_MAP,
+                      counts.missingStopCount, schedStopCount));
+    LOG.log(counts.sameNameStopSubstCount > 0 ? Level.INFO : Level.FINE,
+            MessageFormat.format
+            ("{1} scheduled stop{1,choice,0#s|1#|1<s} substituted "+
+             "with a stop with same name from another {0} route "+
+             "(out of {2} scheduled stop{2,choice,0#s|1#|1<s}).",
+             this.routeType, counts.sameNameStopSubstCount, schedStopCount),
+            logParams(LogMsg.COUNT_OF_SCHED_STOPS_SUBST_FROM_OTHER_MAP_ROUTE,
+                      counts.sameNameStopSubstCount, schedStopCount));
+    LOG.log(counts.stopDupCount > 0 ? Level.INFO : Level.FINE,
+            MessageFormat.format
+            ("{1} ambiguous/duplicate stop{1,choice,0#s|1#|1<s} "+
+             " from all {0} routes "+
+             " (out of {2} scheduled stop{2,choice,0#s|1#|1<s}).",
+             this.routeType, counts.stopDupCount, schedStopCount),
+            logParams(LogMsg.COUNT_OF_SCHED_STOPS_AMBIGUOUS_IN_MAP,
+                      counts.stopDupCount, schedStopCount));
+    LOG.log(counts.notBetweenNeighborsCount > 0 ? Level.INFO : Level.FINE,
+            MessageFormat.format
+            ("{1} stop{1,choice,0#s|1#|1<s} are further from neighbors "+
+             "than the distance between them: max(a-b, b-c) > a-c "+
+             "(out of {2} scheduled {0} stop{2,choice,0#s|1#|1<s}).",
+             this.routeType, counts.notBetweenNeighborsCount, schedStopCount),
+            logParams(
+                      LogMsg.COUNT_OF_MAP_ROUTE_STOPS_NOT_BETWEEN_NEIGHBORS,
+                      counts.notBetweenNeighborsCount, schedStopCount));
+    int matchedMapStopCount = (schedStopCount - counts.missingStopCount
+                               - counts.sameNameStopSubstCount);
+    int mapStopCount = counts.mapStopsUnmatchedCount + matchedMapStopCount;
+    LOG.log(counts.mapStopsUnmatchedCount > 0 ? Level.INFO : Level.FINE,
+            MessageFormat.format
+            ("{1} map route stop{1,choice,0#s|1#|1<s} are unmatched "+
+             " in {0} routes "+
+             "(out of about {2} map {0} stop{2,choice,0#s|1#|1<s}).",
+             this.routeType, counts.mapStopsUnmatchedCount, mapStopCount),
+            logParams(LogMsg.COUNT_OF_MAP_ROUTE_STOPS_NOT_MATCHED,
+                      counts.mapStopsUnmatchedCount, mapStopCount));
+  }
+
+  private void locateSchedRouteStops(List<Element> schedRouteElements, 
+                                     String routeName, Long routeId,
+                                     Set<Stop> routeStops,
+                                     Map<String, List<List<Stop>>> seqStopsMap,
+                                     LoggedStopCounts counts){
+    for (Element schedRouteElement : schedRouteElements) {
+      locateSchedRouteStops(schedRouteElement, routeName, routeId, routeStops,
+                            seqStopsMap, counts);
+    }
+    // log stops not matched in any seq of route
+    LinkedHashSet<Stop> mapRouteStopsUnmatched =
+      new LinkedHashSet<Stop>(routeStops);
+    for (Map.Entry<String, List<List<Stop>>> entry : seqStopsMap.entrySet()) {
+      String dir = entry.getKey();
+      List<List<Stop>> stopSeqList = entry.getValue();
+      for (List<Stop> stopSeq : stopSeqList) {
+        removeMatchedStops(mapRouteStopsUnmatched, stopSeq);
+      }
+    }
+    RouteInfo mapRouteInfo = new RouteInfo(routeName, routeId,
+                                           "all", null,null);
+    for (Stop stop : mapRouteStopsUnmatched) {
+      LOG.log(Level.FINE,
+              "Map route "+mapRouteInfo.mapString()+
+              " contains unmatched stop: "+stop,
+              logParams(LogMsg.MAP_ROUTE_STOP_NOT_MATCHED,
+                        mapRouteInfo, stop));
+    }
+    int mapStopsCount = routeStops.size();
+    int mapStopsUnmatchedCount = mapRouteStopsUnmatched.size();
+    LOG.log(mapStopsUnmatchedCount > 0 ? Level.WARNING : Level.FINEST,
+            MessageFormat.format
+            ("Map route {0} contains {1} stop{1,choice,0#s|1#|1<s} "+
+             "not matching stops in any scheduled trip on this route "+
+             "(out of {2} stop{1,choice,0#s|1#|1<s|} on this map route).",
+             mapRouteInfo.mapString(), mapStopsUnmatchedCount, mapStopsCount),
+            logParams(LogMsg.MAP_ROUTE_STOPS_NOT_MATCHED_COUNT,
+                      routeName, routeId,
+                      mapStopsUnmatchedCount, mapStopsCount));
+    counts.mapStopsUnmatchedCount += mapStopsUnmatchedCount;
   }
   private void locateSchedRouteStops(Element schedRouteElement, 
-                                     String routeName, Set<Stop> routeStops,
+                                     String routeName, Long routeId,
+                                     Set<Stop> routeStops,
+                                     // output containers:
                                      Map<String, List<List<Stop>>> seqStopsMap,
                                      LoggedStopCounts counts){
     // stop-sequences/route/stop-sequence
@@ -560,12 +836,24 @@ public class GenerateStopTimesWithConstantInterval {
       Element sequenceElement = (Element) sequenceNodeList.item(j);
       String dir = sequenceElement.getAttribute("dir");
 
+      Integer[] beginEndSeqNrs;
+      try{ beginEndSeqNrs = getBeginEndSeqNrs(sequenceElement, routeName, dir);}
+      catch (NumberFormatException ex) {
+        LOG.log(Level.SEVERE, ex.getMessage(),
+                logParams(LogMsg.TRIP_ROUTE_STOP_SEQ_NUMBERS_NOT_FOUND,
+                          new RouteInfo(routeName, routeId, dir, null, null)));
+        continue;
+      }
+      RouteInfo routeInfo = new RouteInfo(routeName, routeId, dir,
+                                          beginEndSeqNrs[0], beginEndSeqNrs[1]);
+
       List<Stop> seqStops = new ArrayList<Stop>();
       List<String> schedStopNamesUnmatched = new ArrayList<String>();
       List<Stop> schedStopsSubstFromOtherRoute = new ArrayList<Stop>();
+      int notBetweenNeighborsCount = 0;
 
-      locateSchedRouteSeqStops(sequenceElement, routeName, routeStops,
-                               seqStops,
+      locateSchedRouteSeqStops(sequenceElement, routeInfo,
+                               routeStops, seqStops,
                                schedStopNamesUnmatched,
                                schedStopsSubstFromOtherRoute, counts);
       // analyze result
@@ -581,39 +869,37 @@ public class GenerateStopTimesWithConstantInterval {
           double ab = a.distance_m(b);
           double bc = b.distance_m(c);
           double ac = a.distance_m(c);
-          if (ab > ac || bc > bc) {
-            LOG.warning
-              ("Route "+this.routeType+ " "+routeName+" "+dir+
-               " stop "+p+" \""+b.getName()+"\""+
-               " is further from neighbors than distance between them: "+ b);
+          if (Math.max(ab, bc) > ac) {
+            LOG.log(Level.WARNING,
+                    ("Route "+routeInfo+ " stop "+p+" \""+b.getName()+"\""+
+                     " is further from neighbors than distance between them: "+
+                     b),
+                    logParams(LogMsg.MAP_ROUTE_STOP_NOT_BETWEEN_NEIGHBORS,
+                              routeInfo, p, b));
             counts.notBetweenNeighborsCount++;
+            notBetweenNeighborsCount++;
           }
         }
       }
-      Set<Stop> mapRouteStopsUnmatched = removeMatchedStops(routeStops, seqStops);
-      String summary = makeTripSummary(routeName, dir,
-                                       schedStopNamesUnmatched,
-                                       schedStopsSubstFromOtherRoute,
-                                       mapRouteStopsUnmatched);
       if (seqStops.isEmpty() || seqStops.get(0) == null) { 
         // null would be replaced with later stop if there is one.
-        LOG.severe("Route "+this.routeType+" "+routeName+ " "+dir+
-                   " has no located stops.");
+        LOG.log(Level.SEVERE,
+                ("Route "+routeInfo+ " has no located stops."),
+                logParams(LogMsg.SCHED_ROUTE_DIR_HAS_NO_LOCATED_STOPS,
+                          routeInfo));
         // do not add to seqStopsMap.
         counts.seqSkipCount++;
       } else {
         assert !seqStops.contains(null);
         if (new TreeSet<Stop>(seqStops).size() < 2) {
-          LOG.severe("Route "+this.routeType+" "+routeName+" "+dir+
-                     " has less than 2 located stops.");
+          LOG.log(Level.SEVERE,
+                  ("Route "+routeInfo+ " has less than 2 located stops."),
+                  logParams(
+                    LogMsg.SCHED_ROUTE_DIR_HAS_LESS_THAN_2_LOCATED_STOPS,
+                    routeInfo));
           // do not add to seqStopsMap.
           counts.seqSkipCount++;
         } else /* has at least two located stops */ {
-          if (!schedStopNamesUnmatched.isEmpty()) {
-            LOG.severe(summary);
-          } else if (summary.length() > 0) {
-            LOG.warning(summary);
-          }
           List<List<Stop>> tripsStopSeqs = seqStopsMap.get(dir);
           if (tripsStopSeqs == null) {
             tripsStopSeqs = new ArrayList<List<Stop>>(1);
@@ -622,10 +908,30 @@ public class GenerateStopTimesWithConstantInterval {
           tripsStopSeqs.add(seqStops);
         }
       }
+
+      // log summary for console as well as log
+      String summary = makeRouteSummary(routeInfo,
+                                        schedStopNamesUnmatched,
+                                        schedStopsSubstFromOtherRoute);
+      Object[] summaryParams = new Object[]{
+        LogMsg.SCHED_ROUTE_SUMMARY,
+        this.routeType, routeInfo.name, routeInfo.id, routeInfo.dir,
+        schedStopNamesUnmatched.size(),
+        schedStopsSubstFromOtherRoute.size(),
+        notBetweenNeighborsCount
+      };
+      if (!schedStopNamesUnmatched.isEmpty()) {
+        LOG.log(Level.SEVERE, summary, summaryParams);
+      } else if (summary.length() > 0) {
+        LOG.log(Level.WARNING, summary, summaryParams);
+      } else {
+        LOG.log(Level.FINEST, "All stops matched!", summaryParams);
+      }
     }
   }
   private void locateSchedRouteSeqStops(Element sequenceElement,
-                                        String routeName, Set<Stop> routeStops,
+                                        RouteInfo routeInfo,
+                                        Set<Stop> routeStops,
                                         List<Stop> seqStops,
                                         List<String> schedStopNamesUnmatched,
                                         List<Stop>
@@ -637,10 +943,11 @@ public class GenerateStopTimesWithConstantInterval {
     for (int k = 0; k < schedStopNodeList.getLength(); k++) {
       Element schedStopElement = (Element) schedStopNodeList.item(k);
       // check if same name is on route
+      int seqNr = Integer.parseInt(schedStopElement.getAttribute("number"));
       String name = schedStopElement.getAttribute("name");
       Set<Stop> namedStops = stopsFromName.get(name);
       if (namedStops == null || namedStops.isEmpty()) { // no stops have name
-        categorizeMissingStop(routeName, name, latestNonNullStop,
+        categorizeMissingStop(routeInfo, seqNr, name, latestNonNullStop,
                               seqStops, schedStopNamesUnmatched, counts);
       } else {
         Set<Stop> intersection = new TreeSet<Stop>(namedStops);
@@ -648,16 +955,23 @@ public class GenerateStopTimesWithConstantInterval {
         if (intersection.size() == 1) {        // found unique match, so use it
           latestNonNullStop = intersection.iterator().next();
           seqStops.add(latestNonNullStop);
+          if (LOG.isLoggable(Level.FINEST)) { 
+            LOG.log(Level.FINEST,
+                    "Matched "+latestNonNullStop,
+                    logParams(LogMsg.MAP_ROUTE_STOP_MATCHED, routeInfo,
+                              seqNr, latestNonNullStop));
+          }
         } else if (intersection.size() > 1) {  // > 1 stops in route have name
-          latestNonNullStop = chooseRouteDupStop(routeName, name, intersection,
-                                                 latestNonNullStop, seqStops,
-                                                 counts);
+          latestNonNullStop =
+            chooseRouteDupStop(routeInfo, seqNr, name, intersection,
+                               latestNonNullStop, seqStops, counts);
         } else {
           assert intersection.size() == 0;     // no ROUTE stops have name
-          latestNonNullStop = chooseOffRouteStop(routeName, name, namedStops,
-                                                 latestNonNullStop, seqStops,
-                                                 schedStopsSubstFromOtherRoute,
-                                                 counts);
+          latestNonNullStop =
+            chooseOffRouteStop(routeInfo, seqNr, name, namedStops,
+                               latestNonNullStop, seqStops,
+                               schedStopsSubstFromOtherRoute,
+                               counts);
         }
         assert latestNonNullStop != null;
         assert seqStops.size() == k + 1;
@@ -671,50 +985,69 @@ public class GenerateStopTimesWithConstantInterval {
       }
     }
   }
-  private void categorizeMissingStop(String routeName, String name,
+  private void categorizeMissingStop(RouteInfo routeInfo, 
+                                     int stopSeqNr, String stopName,
                                      Stop latestNonNullStop,
                                      List<Stop> seqStops,
                                      List<String> schedStopNamesUnmatched,
                                      LoggedStopCounts counts) {
     counts.missingStopCount++;
-    schedStopNamesUnmatched.add(name);
+    schedStopNamesUnmatched.add(stopName);
     if (latestNonNullStop != null) { 
-      LOG.fine("scheduled "+this.routeType+ " "+routeName+
-               " stop \""+name+"\" not in map "+this.routeType+" routes;"+
-               " substituting latest stop "+latestNonNullStop);
+      LOG.log(Level.FINE,
+              ("Scheduled "+routeInfo+
+               " stop \""+stopName+"\" not in map "+this.routeType+" routes;"+
+               " substituting latest stop"),
+              logParams(LogMsg.SCHED_STOP_NAME_MISSED_IN_MAP_SUBST_PRIOR,
+                        routeInfo, stopSeqNr));
       seqStops.add(latestNonNullStop);
     } else {
-      LOG.fine("scheduled "+this.routeType+ " "+routeName+
-               " stop \""+name+"\" not in map "+this.routeType+" routes;"+
-               " will substitute next non-null stop.");
+      LOG.log(Level.FINE,
+              ("Scheduled "+routeInfo+
+               " stop \""+stopName+"\" not in map "+this.routeType+" routes;"+
+               " will substitute next non-null stop."),
+              logParams(LogMsg.SCHED_STOP_NAME_MISSED_IN_MAP_SUBST_LATER,
+                        routeInfo, stopSeqNr));
       seqStops.add(null);
     }
   }
-  private Stop chooseRouteDupStop(String routeName, String name,
+  private Stop chooseRouteDupStop(RouteInfo routeInfo,
+                                  int stopSeqNr, String stopName,
                                   Set<Stop> intersection,
                                   Stop latestNonNullStop, List<Stop> seqStops,
                                   LoggedStopCounts counts){
     // Two stops are common, one located on each side of street; warn if more.
     Level logLevel = intersection.size() == 2 ? Level.FINE : Level.WARNING;
     String logReason = (!LOG.isLoggable(logLevel)? null :
-                        "Map route "+this.routeType+" "+routeName+
-                        " has "+intersection.size()+ " \""+name+"\" stops");
+                        "Map route "+routeInfo.mapString()+
+                        " has "+intersection.size()+ " \""+stopName+"\" stops");
     assert intersection.size() > 1;
     if (latestNonNullStop == null) { 
-      if (LOG.isLoggable(logLevel))
-        LOG.log(logLevel, logReason + "; taking first for now: "+intersection);
       latestNonNullStop = intersection.iterator().next(); //take first
+      Set<Stop> rest = new LinkedHashSet<Stop>(intersection);
+      rest.remove(latestNonNullStop);
+      if (LOG.isLoggable(logLevel)) {
+        LOG.log(logLevel,
+                (logReason + "; taking first for now:\n"+
+                 "  "+latestNonNullStop+"\n"+
+                 toLines("  not ", rest)),
+                logParams(LogMsg.MAP_ROUTE_STOP_NAME_NOT_UNIQUE, routeInfo,
+                          stopSeqNr, latestNonNullStop));
+      }
     } else {
       latestNonNullStop =
         selectCloseStopOnTrafficSide(latestNonNullStop, intersection,
-                                     logLevel, logReason);
+                                     logLevel, logReason,
+                                     LogMsg.MAP_ROUTE_STOP_NAME_NOT_UNIQUE,
+                                     routeInfo, stopSeqNr, stopName);
     }
     seqStops.add(latestNonNullStop); 
     counts.stopDupCount++;
     return latestNonNullStop;
   }
                                             
-  private Stop chooseOffRouteStop(String routeName, String name,
+  private Stop chooseOffRouteStop(RouteInfo routeInfo,
+                                  int stopSeqNr, String stopName,
                                   Set<Stop> namedStops,
                                   Stop latestNonNullStop, List<Stop> seqStops,
                                   List<Stop> schedStopsSubstFromOtherRoute,
@@ -724,29 +1057,41 @@ public class GenerateStopTimesWithConstantInterval {
     if (namedStops.size() == 1) {
       latestNonNullStop = namedStops.iterator().next();
       if (LOG.isLoggable(logLevel))
-        LOG.log(logLevel, "Map route "+this.routeType+" "+routeName+
-                " has no stop \""+name+"\"; substituting stop with same name "+
-                "from another "+this.routeType+" route: "+
-                latestNonNullStop.getId());
+        LOG.log(logLevel,
+                ("Map route "+routeInfo.mapString()+
+                 " has no stop \""+stopName+"\"; "+
+                 "substituting stop with same name from another "+
+                 this.routeType+" route: "+ latestNonNullStop),
+                logParams(LogMsg.SCHED_STOP_SUBST_FROM_OTHER_MAP_ROUTE,
+                          routeInfo, stopSeqNr, latestNonNullStop));
       seqStops.add(latestNonNullStop);
       counts.sameNameStopSubstCount++;
       schedStopsSubstFromOtherRoute.add(latestNonNullStop);
     } else {
       String logReason = (!LOG.isLoggable(logLevel) ? null :
-                          "map "+this.routeType+" "+routeName+
-                          " has no stop \""+name+"\" and "+
+                          "Map route "+routeInfo.mapString()+
+                          " has no stop \""+stopName+"\" and "+
                           namedStops.size()+" stops have that name"+
                           " on other "+this.routeType+" route(s)");
       if (latestNonNullStop == null) { 
         latestNonNullStop = namedStops.iterator().next();
+        Set<Stop> rest = new LinkedHashSet<Stop>(namedStops);
+        rest.remove(latestNonNullStop);
         if (LOG.isLoggable(logLevel)) {
-          LOG.log(logLevel, logReason +
-                  "; substituting first for now: "+ latestNonNullStop.getId());
+          LOG.log(logLevel,
+                  (logReason + "; substituting first for now:\n"+
+                   "  "+latestNonNullStop+"\n"+
+                   toLines("  not ", rest)),
+                  logParams(
+                    LogMsg.SCHED_STOP_SUBST_FROM_OTHER_MAP_ROUTE_NOT_UNIQUE,
+                    routeInfo, stopSeqNr, latestNonNullStop));
         }
       } else {
+        LogMsg errType = LogMsg.SCHED_STOP_SUBST_FROM_OTHER_MAP_ROUTE;
         latestNonNullStop =
           selectCloseStopOnTrafficSide(latestNonNullStop, namedStops,
-                                       logLevel, logReason);
+                                       logLevel, logReason, errType,
+                                       routeInfo, stopSeqNr, stopName);
       }
       seqStops.add(latestNonNullStop);
       counts.sameNameStopSubstCount++;
@@ -754,15 +1099,21 @@ public class GenerateStopTimesWithConstantInterval {
     }
     return latestNonNullStop;
   }
+  private static <E> String toLines(String indent, Collection<E> collection) {
+    StringBuilder sb = new StringBuilder();
+    for (E element : collection) {
+      sb.append(indent).append(element).append('\n');
+    }
+    return sb.toString();
+  }
 
   /**
    * Remove stops that have been matched from routeStops.  Also remove
    * stops that have the same name as a matched stop and are within
    * MAX_STOP_PAIR_DISTANCE_m meters (stop on opposite side of street).
    */
-  private Set<Stop> removeMatchedStops(Set<Stop> routeStops,
-                                       List<Stop> matchedStops) {
-    Set<Stop> routeStopsUnmatched = new LinkedHashSet<Stop>(routeStops);
+  private void removeMatchedStops(Set<Stop> routeStopsUnmatched,
+                                  List<Stop> matchedStops) {
     routeStopsUnmatched.removeAll(matchedStops);
     // also remove stops that are near matchedStops (other side of street)
     if (!routeStopsUnmatched.isEmpty()) {
@@ -781,19 +1132,18 @@ public class GenerateStopTimesWithConstantInterval {
         }
       }
     }
-    return routeStopsUnmatched;
   }
 
-  private String makeTripSummary(String routeName, String dir, 
-                                 List<String> schedStopNamesUnmatched,
-                                 List<Stop> schedStopsSubstFromOtherRoute,
-                                 Set<Stop> mapRouteStopsUnmatched) {
+  private String makeRouteSummary(RouteInfo routeInfo,
+                                  List<String> schedStopNamesUnmatched,
+                                  List<Stop> schedStopsSubstFromOtherRoute) {
     StringBuilder summary =
-      new StringBuilder("Route "+this.routeType+" "+routeName+ " "+dir+ ":\n"); 
+      new StringBuilder("Route "+routeInfo+":\n"); 
     int emptyLength = summary.length();
 
     if (!schedStopNamesUnmatched.isEmpty()) {
-      summary.append("  unmatched schedule stops (not in other map "+
+      summary.append("  "+schedStopNamesUnmatched.size()+
+                     " unmatched schedule stops (not in other map "+
                      this.routeType+" routes):\n");
       for (String stopName : schedStopNamesUnmatched) {
         summary.append("    ").append(stopName).append('\n');
@@ -802,26 +1152,17 @@ public class GenerateStopTimesWithConstantInterval {
 
     if (!schedStopsSubstFromOtherRoute.isEmpty()) { 
       summary.append
-        ("  unmatched schedule stops (substituted stop"+
+        ("  "+schedStopsSubstFromOtherRoute.size()+
+         " unmatched schedule stops (substituted stop"+
          " with same name found in another map "+ this.routeType+" route):\n");
       for (Stop stop : schedStopsSubstFromOtherRoute) {
         summary.append("    ").append(stop).append('\n');
       }
     }
 
-    if (!mapRouteStopsUnmatched.isEmpty() &&
-        // only list unmatched map route stops if there are unmatched
-        // sched stops, because some trips do not use all route stops.
-        // For example, trips that do not go to end of line, or express trips.
-        (!schedStopNamesUnmatched.isEmpty() ||
-         !schedStopsSubstFromOtherRoute.isEmpty())) {
-      summary.append("  unmatched map route stops:\n");
-      for (Stop stop : mapRouteStopsUnmatched) {
-        summary.append("    ").append(stop).append('\n');
-      }
-    }
     return summary.length() == emptyLength ? "" : summary.toString();
   }
+
 
   /**
    * From candidates, select the two stops closest to latestStop.
@@ -877,24 +1218,33 @@ public class GenerateStopTimesWithConstantInterval {
    * @param trafficSide left or right (traffic travels on this side of road)
    * @param logLevel level at which to log match messages
    * @param logReason start of log message; explains how candidates were found.
+   * @param errType encodes how candidates were found
    */
   private Stop selectCloseStopOnTrafficSide(Stop latestStop,
                                             Set<Stop> candidates,
-                                            Level logLevel, String logReason) {
+                                            Level logLevel, String logReason,
+                                            LogMsg errType,
+                                            RouteInfo routeInfo,
+                                            int stopSeqNr, String stopName) {
     assert candidates.size() >= 2;
     Stop[] twoClosestStops = selectClosest2Stops(latestStop, candidates);
     Stop stop0 = twoClosestStops[0], stop1 = twoClosestStops[1];
     double distBetween = stop0.distance_m(stop1);
     if (distBetween > MAX_STOP_PAIR_DISTANCE_m) {
       if (LOG.isLoggable(logLevel)) 
-        LOG.log(logLevel, logReason+"; subsituting closest for now: "+
-                stop0.getId()+
-                " (next is "+Math.round(distBetween)+"m further).");
+        LOG.log(logLevel,
+                (logReason+"; "+
+                 (errType.name().contains("SUBST") ? "subsituting" : "picking")+
+                 " closest for now: "+stop0+"\n"+ 
+                 " (next is "+Math.round(distBetween)+"m further: "+stop1+")"),
+                logParams(errType, routeInfo, stopSeqNr, stop0));
       return stop0;
     }
     if (distBetween == 0.0) {
-      LOG.warning("Found two stops at same position, choosing first: "+
-                  stop0.getId()+", "+stop1.getId());
+      LOG.log(Level.WARNING,
+              ("Found two stops at same position, choosing first:\n  "+
+               stop0+",\n  "+stop1),
+              logParams(errType, routeInfo, stopSeqNr, stop0));
       return stop0;
     }
       
@@ -910,21 +1260,34 @@ public class GenerateStopTimesWithConstantInterval {
 
     if (dirDiff == 0) {
       if (LOG.isLoggable(logLevel)) 
-        LOG.log(logLevel, logReason+ "; substituting closest for now: "+
-                stop0.getId()+ " (next is at same angle from previous stop)");
+        LOG.log(logLevel,
+                (logReason+ "; "+
+                 (errType.name().contains("SUBST") ? "subsituting" : "picking")+
+                 " closest for now: "+
+                 stop0+ " (next is at same angle from previous stop)"));
       return stop0; // rare: aligned, just pick closest for now.
     } 
 
-    Stop result;
+    Stop result, reject;
     switch(this.trafficSide) {
-      case LEFT:  result = (dirDiff > 0 ? stop1 : stop0); break;
-      case RIGHT: result = (dirDiff < 0 ? stop1 : stop0); break;
+      case LEFT:
+        if (dirDiff > 0) { result = stop1; reject = stop0; }
+        else             { result = stop0; reject = stop1; }
+        break;
+      case RIGHT: 
+        if (dirDiff < 0) { result = stop1; reject = stop0; }
+        else             { result = stop0; reject = stop1; }
+        break;
       default: throw new AssertionError(this.trafficSide);
     }
     if (LOG.isLoggable(logLevel)) 
-      LOG.log(logLevel, logReason+ "; substituting closest on "+
-              this.trafficSide.name().toLowerCase()+
-              " from previous stop for now: "+ result.getId());
+      LOG.log(logLevel,
+              (logReason+ "; "+
+               (errType.name().contains("SUBST") ? "subsituting" : "picking")+
+               " closest on "+ this.trafficSide.name().toLowerCase()+
+               " from previous stop for now: "+ result+"\n"+
+               "  not the alternative: "+ reject),
+              logParams(errType, routeInfo, stopSeqNr, result));
     return result;
   }
   /**
@@ -932,11 +1295,27 @@ public class GenerateStopTimesWithConstantInterval {
    */
   public enum TrafficSide { LEFT, RIGHT }
 
+  private int countElements(Node contextNode, String xpathExpression) {
+    try {
+      Double count = (Double) xpath.evaluate("count("+xpathExpression+")",
+                                             contextNode,
+                                             XPathConstants.NUMBER);
+      return count.intValue();
+    } catch (XPathExpressionException ex) { throw new Error(ex); }
+  }
   private Element selectElement(File xmlFile, String xpathExpression) {
     try { 
       return (Element)
         xpath.evaluate(xpathExpression,
-                       new InputSource(xmlFile.toString()),
+                       makeUTF8InputSource(xmlFile),
+                       XPathConstants.NODE);
+    } catch (XPathExpressionException ex) { throw new Error(ex); }
+  }
+  private Element selectElement(Node contextNode, String xpathExpression) {
+    try { 
+      return (Element)
+        xpath.evaluate(xpathExpression,
+                       contextNode,
                        XPathConstants.NODE);
     } catch (XPathExpressionException ex) { throw new Error(ex); }
   }
@@ -944,7 +1323,7 @@ public class GenerateStopTimesWithConstantInterval {
     try { 
       return (NodeList)
         xpath.evaluate(xpathExpression,
-                       new InputSource(xmlFile.toString()),
+                       makeUTF8InputSource(xmlFile),
                        XPathConstants.NODESET);
     } catch (XPathExpressionException ex) { throw new Error(ex); }
   }
@@ -956,14 +1335,113 @@ public class GenerateStopTimesWithConstantInterval {
                        XPathConstants.NODESET);
     } catch (XPathExpressionException ex) { throw new Error(ex); }
   }
+  private String selectAttribute(Node contextNode, String xpathExpression) {
+    try { 
+      return (String)
+        xpath.evaluate(xpathExpression,
+                       contextNode,
+                       XPathConstants.STRING);
+    } catch (XPathExpressionException ex) { throw new Error(ex); }
+  }
+  private static InputSource makeUTF8InputSource(File xmlFile) {
+    InputSource inputSource = new InputSource(xmlFile.toString());
+    inputSource.setEncoding("UTF-8");
+    return inputSource;
+  }
+
   private class LoggedStopCounts {
-    int routeSkipCount = 0, seqSkipCount = 0;
+    int routeSkipCount = 0;
+    int routeSubstCount = 0;
+    int seqSkipCount = 0;
     int missingStopCount = 0;
     int sameNameStopSubstCount = 0;
     int stopDupCount = 0;
     int notBetweenNeighborsCount = 0;
+    int mapStopsUnmatchedCount = 0;
   }
-    
+  private class RouteInfo {
+    final String name;
+    final Long id;
+    final String dir;
+    final Integer beginStopSeqNr, endStopSeqNr;
+    String schedString, mapString;
+    /**
+     * @param routeName short name of route such as 101 or M3
+     * @param routeId unique id of route in map
+     * @param routeDir direction, either 'forward' or 'backward'
+     * @param beginStopSeqNr stop sequence number of begin stop, typically 0.
+     * @param endStopSeqNr stop sequence number of end stop, typically last.
+     */
+    RouteInfo(String routeName, Long routeId, String routeDir,
+              Integer beginStopSeqNr, Integer endStopSeqNr) {
+      this.name = routeName;
+      this.id = routeId;
+      this.dir = routeDir;
+      this.beginStopSeqNr = beginStopSeqNr;
+      this.endStopSeqNr = endStopSeqNr;
+    }
+    /**
+     * "TYPE NAME" or "TYPE NAME (DIR)" or "TYPE NAME (DIR BEGIN-END)", 
+     * where TYPE is route type, NAME is short route name (typically a
+     * number such as 101 or M3), BEGIN and END are stop sequence
+     * numbers for route in the direction.
+     */
+    String schedString() {
+      if (this.schedString == null) { 
+        StringBuilder sb = new StringBuilder();
+        sb.append(GenerateStopTimesWithConstantInterval.this.routeType);
+        sb.append(' ').append(this.name);
+        if (this.dir != null) {
+          sb.append(" (");
+          sb.append(this.dir);
+          if (this.beginStopSeqNr != null || this.endStopSeqNr != null) {
+            sb.append(' ');
+            sb.append(this.beginStopSeqNr == null ? "?" : this.beginStopSeqNr);
+            sb.append('-');
+            sb.append(this.endStopSeqNr == null ? "?" : this.endStopSeqNr);
+          }
+          sb.append(")");
+        }
+        this.schedString = sb.toString();
+      }
+      return this.schedString;
+    }
+    /**
+     * "TYPE NAME" or "TYPE NAME (ID)"
+     */
+    String mapString() {
+      if (this.mapString == null) { 
+        StringBuilder sb = new StringBuilder();
+        sb.append(GenerateStopTimesWithConstantInterval.this.routeType);
+        sb.append(' ').append(this.name);
+        if (this.id != null) {
+          sb.append(" (id=").append(this.id).append(')');
+        }
+        this.mapString =  sb.toString();
+      }
+      return this.mapString;
+    }
+    public String toString() { return schedString(); }
+  }
+  private Integer[] getBeginEndSeqNrs(Element sequenceElement,
+                                      String rteNo, String dir) {
+    try { 
+      String beginStopNoAttr =
+        selectAttribute(sequenceElement, "stop[1]/@number");
+      String endStopNoAttr =
+        selectAttribute(sequenceElement, "stop[last()]/@number");
+      Integer beginStopSeqNr = Integer.valueOf(beginStopNoAttr);
+      Integer endStopSeqNr = Integer.valueOf(endStopNoAttr);
+      return new Integer[]{beginStopSeqNr, endStopSeqNr};
+    } catch (NumberFormatException ex) {
+      NumberFormatException ex2 =
+        new NumberFormatException
+        (this.routeType+" "+rteNo+" "+dir+
+         ": error parsing seqStops number attribute: "+ ex.getMessage());
+      ex2.initCause(ex);
+      throw ex2;
+    }
+  }
   /**
    * Create a <code>java.util.logging.FileHander</code> that writes to
    * <code>errLog</code>.
@@ -978,6 +1456,7 @@ public class GenerateStopTimesWithConstantInterval {
   protected void initLogHandler(File errLog) throws IOException {
     LogManager logMgr = LogManager.getLogManager();
     FileHandler handler = new FileHandler(errLog.toString());
+    handler.setEncoding("UTF-8");
     String handlerClassName = handler.getClass().getName();
     String formatterClassName =
       logMgr.getProperty(handlerClassName+".formatter");
@@ -988,7 +1467,7 @@ public class GenerateStopTimesWithConstantInterval {
         handler.setFormatter(formatter);
       } catch (Throwable th) {
         Error error =
-          new Error("Error while creating "+handlerClassName+": "+th);
+          new Error("Error while creating "+formatterClassName+": "+th);
         error.initCause(th);
         throw error;
       }
@@ -1022,4 +1501,108 @@ public class GenerateStopTimesWithConstantInterval {
     System.err.println("Logging to "+errLog);
   }
 
+  private Object[] logParams(LogMsg errType, int count, int inTotal) {
+    return new Object[]{errType, this.routeType, count, inTotal};
+  }
+  private Object[] logParams(LogMsg errType,
+                             String routeName) {
+    return new Object[]{errType, this.routeType, routeName};
+  }
+  private Object[] logParams(LogMsg errType,
+                             String routeName, Long routeId) {
+    return new Object[]{errType, this.routeType, routeName, routeId};
+  }
+  private Object[] logParams(LogMsg errType,
+                             String routeName, Long routeId,
+                             int count, int inTotal) {
+    return new Object[]{errType, this.routeType, routeName, routeId,
+                        count, inTotal};
+  }
+  private Object[] logParams(LogMsg errType,
+                             RouteInfo routeInfo) {
+    return new Object[]{errType, this.routeType,
+                        routeInfo.name, routeInfo.id, routeInfo.dir,
+                        routeInfo.beginStopSeqNr, routeInfo.endStopSeqNr};
+  }
+  private Object[] logParams(LogMsg errType, RouteInfo routeInfo,
+                             String routeSvc) {
+    return new Object[]{errType, this.routeType,
+                        routeInfo.name, routeInfo.id, routeInfo.dir,
+                        routeInfo.beginStopSeqNr, routeInfo.endStopSeqNr,
+                        routeSvc};
+  }
+  private Object[] logParams(LogMsg errType, RouteInfo routeInfo,
+                             String routeSvc, String tripId) {
+    return new Object[]{errType, this.routeType,
+                        routeInfo.name, routeInfo.id, routeInfo.dir,
+                        routeInfo.beginStopSeqNr, routeInfo.endStopSeqNr,
+                        routeSvc, tripId};
+  }
+  private Object[] logParams(LogMsg errType, RouteInfo routeInfo,
+                             String routeSvc, String tripId,
+                             String fromStopName, String toStopName) {
+    return new Object[]{errType, this.routeType,
+                        routeInfo.name, routeInfo.id, routeInfo.dir, routeSvc,
+                        routeInfo.beginStopSeqNr, routeInfo.endStopSeqNr,
+                        fromStopName, toStopName};
+  }
+  private Object[] logParams(LogMsg errType, RouteInfo routeInfo,
+                             int stopSeqNr) {
+    return new Object[]{errType, this.routeType,
+                        routeInfo.name, routeInfo.id, routeInfo.dir,
+                        routeInfo.beginStopSeqNr, routeInfo.endStopSeqNr,
+                        stopSeqNr};
+  }
+  private Object[] logParams(LogMsg errType, RouteInfo routeInfo,
+                             int stopSeqNr, Stop mapStop) {
+    return new Object[]{errType, this.routeType,
+                        routeInfo.name, routeInfo.id, routeInfo.dir,
+                        routeInfo.beginStopSeqNr, routeInfo.endStopSeqNr,
+                        stopSeqNr, mapStop.getName(), mapStop.getId()};
+  }
+  private Object[] logParams(LogMsg errType, RouteInfo routeInfo,
+                             Stop mapStop) {
+    return new Object[]{errType, this.routeType,
+                        routeInfo.name, routeInfo.id, routeInfo.dir,
+                        routeInfo.beginStopSeqNr, routeInfo.endStopSeqNr,
+                        null, mapStop.getName(), mapStop.getId()};
+  }
+  public enum LogMsg {
+    COUNT_OF_SKIPPED_ROUTE,
+    COUNT_OF_SKIPPED_ROUTE_DIR,
+    COUNT_OF_SUBST_ROUTE,
+    COUNT_OF_SCHED_STOP_NAMES_MISSED_IN_MAP,
+    COUNT_OF_SCHED_STOPS_SUBST_FROM_OTHER_MAP_ROUTE,
+    COUNT_OF_SCHED_STOPS_AMBIGUOUS_IN_MAP,
+    COUNT_OF_MAP_ROUTE_STOPS_NOT_BETWEEN_NEIGHBORS,
+    COUNT_OF_MAP_ROUTE_STOPS_NOT_MATCHED,
+
+    MAP_ROUTE_ID_INVALID,
+    MAP_ROUTE_STOP_MATCHED,
+    MAP_ROUTE_STOP_NOT_MATCHED,
+    MAP_ROUTE_STOP_NAME_NOT_UNIQUE,
+    MAP_ROUTE_STOP_NOT_BETWEEN_NEIGHBORS,
+    MAP_ROUTE_STOPS_NOT_MATCHED_COUNT,
+
+    SCHED_ROUTE_NOT_FOUND_IN_OSM,
+    SCHED_ROUTE_HAS_NO_LOCATED_STOPS,
+    SCHED_ROUTE_HAS_ONLY_SUBST_STOPS,
+    SCHED_ROUTE_DIR_HAS_NO_LOCATED_STOPS,
+    SCHED_ROUTE_DIR_HAS_LESS_THAN_2_LOCATED_STOPS,
+    SCHED_ROUTE_SUMMARY,
+
+    SCHED_STOP_NAME_MISSED_IN_MAP_SUBST_PRIOR,
+    SCHED_STOP_NAME_MISSED_IN_MAP_SUBST_LATER,
+    SCHED_STOP_SUBST_FROM_OTHER_MAP_ROUTE,
+    SCHED_STOP_SUBST_FROM_OTHER_MAP_ROUTE_NOT_UNIQUE,
+    SCHED_STOP_MATCHED_TO_ONLY_SEQ_BEGIN,
+    SCHED_STOP_MATCHED_TO_ONLY_SEQ_END,
+
+    TRIP_ROUTE_ID_INVALID,
+    TRIP_ROUTE_DIR_INVALID,
+    TRIP_ROUTE_HAS_NO_LOCATED_STOPS,
+    TRIP_ROUTE_DIR_HAS_NO_LOCATED_STOPS,
+    TRIP_ROUTE_STOP_SEQ_NOT_FOUND,
+    TRIP_ROUTE_STOP_SEQ_NUMBERS_NOT_FOUND,
+  }
 }

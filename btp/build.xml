@@ -1,7 +1,7 @@
 <project name="btp" default="build" basedir=".">
   <description>Bucharest Trip Planner</description>
   <property name="product.name" value="Bucharest Trip Planner"/>
-  <property name="product.version" value="v0.1"/>
+  <property name="product.version" value="v0.2"/>
   <property name="product.abbr" value="btp"/>
 
   <!-- directories -->
@@ -15,6 +15,7 @@
   <property name="dl.dir" value="${base.dir}/downloads"/>
 
   <property name="build.dir" value="${base.dir}/build"/>
+  <property name="matches.build.dir" value="${build.dir}/stops-matched"/>
 
   <property name="target.dir" value="${base.dir}/target"/>
     
@@ -31,6 +32,8 @@
   <import file="build-ratbtrob.xml"/>
   <import file="build-ratbubus.xml"/>
   <import file="build-otp.xml"/>
+  <import file="build-stops-matched.xml"/>
+  <import file="build-tomcatmgr.xml"/>
 
   <target name="build" depends="otp-build-graph"
     description="build OpenTripPlanner graph">
@@ -38,6 +41,13 @@
       (Re)Start server (see README-INSTALL.txt #5).
 
       To use server, open web browser to:
+        http://localhost:8080/opentripplanner-webapp/index.html
+    </echo>
+  </target>
+
+  <target name="build-reload" depends="otp-build-graph,otp-api-reload"
+    description="build OpenTripPlanner graph, reload api app on Tomcat">
+    <echo>To use server, open web browser to:
         http://localhost:8080/opentripplanner-webapp/index.html
     </echo>
   </target>
@@ -85,20 +95,23 @@
         <fileset dir="${base.dir}/.." includes="btp/ant.cmd"/>
         <fileset dir="${base.dir}/.." includes="btp/build.xml"/>
         <fileset dir="${base.dir}/.." includes="btp/build-osm.xml"/>
-        <fileset dir="${base.dir}/.." includes="btp/build-osm-whole.xml"/>
-        <fileset dir="${base.dir}/.." includes="btp/build-osm-parts.xml"/>
+        <fileset dir="${base.dir}/.." includes="btp/build-osm-geofabrik.xml"/>
+        <fileset dir="${base.dir}/.." includes="btp/build-osm-osmapi.xml"/>
         <fileset dir="${base.dir}/.." includes="btp/build-osm-fixes.xml"/>
         <fileset dir="${base.dir}/.." includes="btp/build-metrorex.xml"/>
         <fileset dir="${base.dir}/.." includes="btp/build-ratbtram.xml"/>
         <fileset dir="${base.dir}/.." includes="btp/build-ratbtrob.xml"/>
         <fileset dir="${base.dir}/.." includes="btp/build-ratbubus.xml"/>
         <fileset dir="${base.dir}/.." includes="btp/build-otp.xml"/>
+        <fileset dir="${base.dir}/.." includes="btp/build-stops-matched.xml"/>
+        <fileset dir="${base.dir}/.." includes="btp/build-tomcatmgr.xml"/>
         <fileset dir="${base.dir}/.." includes="btp/src/main/java/*.java"/>
         <fileset dir="${base.dir}/.." includes="btp/src/main/java/logging.properties"/>
         <fileset dir="${base.dir}/.." includes="btp/src/main/osm/*.osm"/>
         <fileset dir="${base.dir}/.." includes="btp/src/main/otp/*.patch"/>
         <fileset dir="${base.dir}/.." includes="btp/src/main/xslt/*.xslt"/>
         <fileset dir="${base.dir}/.." includes="btp/src/main/xml/*.xml"/>
+        <fileset dir="${base.dir}/.." includes="btp/src/main/xml/*.xhtml"/>
         <fileset dir="${base.dir}/.." includes="btp/src/main/txt/*.txt"/>
       </sourcefiles>
       <sequential>
@@ -110,22 +123,26 @@
           <fileset dir="${base.dir}/.." includes="btp/ant.cmd"/>
           <fileset dir="${base.dir}/.." includes="btp/build.xml"/>
           <fileset dir="${base.dir}/.." includes="btp/build-osm.xml"/>
-          <fileset dir="${base.dir}/.." includes="btp/build-osm-whole.xml"/>
-          <fileset dir="${base.dir}/.." includes="btp/build-osm-parts.xml"/>
+          <fileset dir="${base.dir}/.." includes="btp/build-osm-geofabrik.xml"/>
+          <fileset dir="${base.dir}/.." includes="btp/build-osm-osmapi.xml"/>
           <fileset dir="${base.dir}/.." includes="btp/build-osm-fixes.xml"/>
           <fileset dir="${base.dir}/.." includes="btp/build-metrorex.xml"/>
           <fileset dir="${base.dir}/.." includes="btp/build-ratbtram.xml"/>
           <fileset dir="${base.dir}/.." includes="btp/build-ratbtrob.xml"/>
           <fileset dir="${base.dir}/.." includes="btp/build-ratbubus.xml"/>
           <fileset dir="${base.dir}/.." includes="btp/build-otp.xml"/>
+          <fileset dir="${base.dir}/.." includes="btp/build-stops-matched.xml"/>
+          <fileset dir="${base.dir}/.." includes="btp/build-tomcatmgr.xml"/>
           <fileset dir="${base.dir}/.." includes="btp/src/main/java/*.java"/>
           <fileset dir="${base.dir}/.." includes="btp/src/main/java/logging.properties"/>
           <fileset dir="${base.dir}/.." includes="btp/src/main/osm/*.osm"/>
           <fileset dir="${base.dir}/.." includes="btp/src/main/otp/*.patch"/>
           <fileset dir="${base.dir}/.." includes="btp/src/main/xslt/*.xslt"/>
           <fileset dir="${base.dir}/.." includes="btp/src/main/xml/*.xml"/>
+          <fileset dir="${base.dir}/.." includes="btp/src/main/xml/*.xhtml"/>
           <fileset dir="${base.dir}/.." includes="btp/src/main/txt/*.txt"/>
         </zip>
+	<echo>${btp.zip}</echo>
       </sequential>
     </outofdate>
   </target>

@@ -8,8 +8,8 @@
   <!-- result file -->
   <property name="build.bucharest.osm" value="${osm.build.dir}/bucharest.osm"/>
 
-  <import file="build-osm-whole.xml"/>
-  <import file="build-osm-parts.xml"/>
+  <import file="build-osm-geofabrik.xml"/>
+  <import file="build-osm-osmapi.xml"/>
   <import file="build-osm-fixes.xml"/>
 
   <target name="osm-build" depends="osm-get-city,osm-fixes-merge"/>
@@ -17,10 +17,11 @@
   <target name="osm-get-city"
     description="get bucharest.osm depending on osm.sourceType">
     <!-- osm.sourceType for bucharest.osm from file build.properties:
-         'whole' download whole country.osm.pbf then extract bucharest.osm
-         'parts' download parts of bucharest from api.bucharest.org and merge
-         'copy'  copy bucharest.osm from bucharest.prepared.osm -->
-
+      'copy'      copy bucharest.osm from file at ${bucharest.prepared.osm}
+      'bugssy'    download bucharest.osm from osm.bugssy.net
+      'geofabrik' download region.osm.pbf from geofabrik, extract bucharest.osm
+      'osm-api'   download parts of bucharest from api.openstreetmap.org, merge
+    -->
     <!-- default if osm.sourceType is not set:
          if bucharest.prepared.osm is set, then 'copy' else 'whole' -->
     <if>
@@ -38,15 +39,19 @@
       <equals arg1="${osm.sourceType}" arg2="copy" casesensitive="false"/>
       <then><antcall target="osm-copy"/></then>
       <elseif>
-        <equals arg1="${osm.sourceType}" arg2="whole" casesensitive="false"/>
-        <then><antcall target="osm-whole-extract-city"/></then>
+        <equals arg1="${osm.sourceType}" arg2="bugssy" casesensitive="false"/>
+        <then><antcall target="osm-bugssy-get-city"/></then>
       </elseif>
       <elseif>
-        <equals arg1="${osm.sourceType}" arg2="parts" casesensitive="false"/>
-        <then><antcall target="osm-parts-merge"/></then>
+        <equals arg1="${osm.sourceType}" arg2="geofabrik" casesensitive="false"/>
+        <then><antcall target="osm-geofab-extract-city"/></then>
+      </elseif>
+      <elseif>
+        <equals arg1="${osm.sourceType}" arg2="osm-api" casesensitive="false"/>
+        <then><antcall target="osm-osmapi-merge"/></then>
       </elseif>
       <else>
-        <fail message="Not 'copy' or 'whole' or 'parts': ${osm.sourceType}"/>
+        <fail message="Not 'copy' or 'geofab' or 'osm-api': ${osm.sourceType}"/>
       </else>
     </if>
   </target>
@@ -60,6 +65,28 @@
     <!-- copy so all targets read same version even if source changes. -->
     <copy file="${bucharest.prepared.osm}"
           tofile="${build.bucharest.osm}"/>
+  </target>
+
+  <target name="osm-bugssy-get-city"
+    description="Get bucharest.osm from osm.bugssy.net"
+    depends="check-build.properties">
+
+    <property name="osm.bucharest.url"
+      value="http://osm.bugssy.net/osm-planet/bucharest.osm"/>
+    <property name="dl.bucharest.osm"
+      value="${osm.dl.dir}/bucharest-bugssy.osm"/>
+
+    <mkdir dir="${osm.dl.dir}"/>
+    
+    <!-- don't download if not newer than existing file -->
+    <get usetimestamp="true"
+         src="${osm.bucharest.url}" dest="${dl.bucharest.osm}"/>
+
+    <!-- copy to avoid re-download after a clean. -->
+    <copy file="${dl.bucharest.osm}"
+          tofile="${build.bucharest.osm}"/>
+
+    <echo>${build.bucharest.osm}</echo>
   </target>
 
   <target name="osm-clean"

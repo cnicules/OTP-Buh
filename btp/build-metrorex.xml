@@ -5,6 +5,7 @@
   <property name="dl.metrorex.dir" value="${dl.dir}/metrorex"/>
   <property name="metrorex.build.dir" value="${build.dir}/metrorex"/>
   <property name="metrorex.gtfs.dir" value="${metrorex.build.dir}/gtfs"/>
+  <property name="metrorex.matches.dir" value="${matches.build.dir}/Metrorex"/>
 
   <!-- result -->
   <property name="gtfs-metrorex.zip" value="${target.dir}/gtfs-metrorex.zip"/>
@@ -387,13 +388,11 @@
     depends="metrorex-trips,metrorex-stops,compile-java">
     <property name="metrorex-stop-times.xml"
       value="${metrorex.build.dir}/metrorex-stop-times.xml"/>
+    <property name="metrorex-stop-matching-log.xml"
+      value="${metrorex.build.dir}/metrorex-stop-matching-log.xml"/>
+    <property name="metrorex-stopseqs.xml"
+      value="${base.dir}/src/main/xml/metrorex-stopseqs.xml"/>
     <sequential>
-      <local name="metrorex-stopseqs.xml"/>
-      <property name="metrorex-stopseqs.xml"
-        value="${base.dir}/src/main/xml/metrorex-stopseqs.xml"/>
-      <local name="metrorex-stop-times.log"/>
-      <property name="metrorex-stop-times.log"
-        value="${metrorex.build.dir}/metrorex-stop-times.log"/>
       <outofdate>
         <targetfiles path="${metrorex-stop-times.xml}"/>
         <sourcefiles>
@@ -404,6 +403,7 @@
           <pathelement path="${build.dir}/classes/GenerateStopTimesWithConstantInterval.class"/>
           <pathelement path="${build.dir}/classes/Duration.class"/>
           <pathelement path="${build.dir}/classes/Stop.class"/>
+          <pathelement path="${build.dir}/classes/XMLFormatterStandalone.class"/>
           <pathelement path="${base.dir}/src/main/java/logging.properties"/>
         </sourcefiles>
         <sequential>
@@ -423,7 +423,7 @@
             <arg value="00:00:20"/>
             <arg value="00:02:40"/>
             <arg value="${metrorex-stop-times.xml}"/>
-            <arg value="${metrorex-stop-times.log}"/>
+            <arg value="${metrorex-stop-matching-log.xml}"/>
           </java>
           <echo>${metrorex-stop-times.xml}</echo>
         </sequential>
@@ -449,6 +449,112 @@
         </sequential>
       </outofdate>
     </sequential>
+  </target>
+
+  <target name="metrorex-stop-matches" depends="metrorex-stop_times">
+    <property name="metrorex-stop-matching-log.html"
+      value="${metrorex.build.dir}/metrorex-stop-matching-log.html"/>
+    <sequential>
+      <local name="xmlLog-to-html.xslt"/>
+      <property name="xmlLog-to-html.xslt"
+        value="${base.dir}/src/main/xslt/xmlLog-to-html.xslt"/>
+      <outofdate>
+        <targetfiles path="${metrorex-stop-matching-log.html}"/>
+        <sourcefiles>
+          <pathelement path="${metrorex-freqs.xml}"/>
+          <pathelement path="${metrorex-routes.xml}"/>
+          <pathelement path="${metrorex-stopseqs.xml}"/>
+          <pathelement path="${metrorex-stop-matching-log.xml}"/>
+          <pathelement path="${xmlLog-to-html.xslt}"/>
+        </sourcefiles>
+        <sequential>
+          <local name="date_time"/>
+          <tstamp>
+            <format property="date_time" pattern="yyyy-MM-dd HH:mmZ"/>
+          </tstamp>
+          <xslt in="${metrorex-freqs.xml}"
+                out="${metrorex-stop-matching-log.html}"
+                style="${xmlLog-to-html.xslt}" force="true">
+            <param name="dateTime" expression="${date_time}"/>
+            <param name="agency" expression="Metrorex"/>
+            <param name="routeType" expression="subway"/>
+            <param name="osmRoutesXml" expression="${metrorex-routes.xml}"/>
+            <param name="stopSeqsXml" expression="${metrorex-stopseqs.xml}"/>
+            <param name="logXml"
+                   expression="${metrorex-stop-matching-log.xml}"/>
+          </xslt>
+          <echo>${metrorex-stop-matching-log.html}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+
+    <property name="metrorex-matches-index.html"
+      value="${metrorex.matches.dir}/index.html"/>
+    <sequential>
+      <local name="xhtmlLogSplit-index.xslt"/>
+      <property name="xhtmlLogSplit-index.xslt"
+        value="${base.dir}/src/main/xslt/xhtmlLogSplit-index.xslt"/>
+      <outofdate>
+        <targetfiles path="${metrorex-matches-index.html}"/>
+        <sourcefiles>
+          <pathelement path="${metrorex-stop-matching-log.html}"/>
+          <pathelement path="${xhtmlLogSplit-index.xslt}"/>
+        </sourcefiles>
+        <sequential>
+          <mkdir dir="${metrorex.matches.dir}"/>
+          <xslt in="${metrorex-stop-matching-log.html}"
+                out="${metrorex-matches-index.html}"
+                style="${xhtmlLogSplit-index.xslt}"/>
+          <echo>${metrorex-matches-index.html}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>    
+
+    <local name="metrorex-route-id-list.txt"/>
+    <property name="metrorex-route-id-list.txt"
+      value="${metrorex.build.dir}/metrorex-route-id-list.txt"/>
+    <sequential>
+      <local name="xhtmlLogSplit-routeIdList.xslt"/>
+      <property name="xhtmlLogSplit-routeIdList.xslt"
+        value="${base.dir}/src/main/xslt/xhtmlLogSplit-routeIdList.xslt"/>
+      <outofdate>
+        <targetfiles path="${metrorex-route-id-list.txt}"/>
+        <sourcefiles>
+          <pathelement path="${metrorex-stop-matching-log.html}"/>
+          <pathelement path="${xhtmlLogSplit-routeIdList.xslt}"/>
+        </sourcefiles>
+        <sequential>
+          <xslt in="${metrorex-stop-matching-log.html}"
+                out="${metrorex-route-id-list.txt}"
+                style="${xhtmlLogSplit-routeIdList.xslt}"/>
+          <echo>${metrorex-route-id-list.txt}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>    
+
+    <local name="metrorex-route-id-list"/>
+    <loadfile property="metrorex-route-id-list"
+      srcFile="${metrorex-route-id-list.txt}"/>
+    
+    <for param="routeNr" list="${metrorex-route-id-list}"
+         delimiter="&#xA;" trim="true">
+      <sequential>
+        <local name="routeMatches.html"/>
+        <property name="routeMatches.html"
+          value="${metrorex.matches.dir}/Metrorex-subway-@{routeNr}.html"/>
+        <local name="xhtmlLogSplit-route.xslt"/>
+        <property name="xhtmlLogSplit-route.xslt"
+          value="${base.dir}/src/main/xslt/xhtmlLogSplit-route.xslt"/>
+        <xslt in="${metrorex-stop-matching-log.html}"
+              out="${routeMatches.html}"
+              style="${xhtmlLogSplit-route.xslt}">
+          <param name="agency" expression="Metrorex"/>
+          <param name="routeType" expression="subway"/>
+          <param name="routeShortName" expression="@{routeNr}"/>
+        </xslt>
+      </sequential>
+    </for>
+
   </target>
 
   <target name="metrorex-agency">
@@ -482,6 +588,7 @@
         <pathelement path="${metrorex.gtfs.dir}/stop_times.txt"/>
       </sourcefiles>
       <sequential>
+        <mkdir dir="${target.dir}"/>
         <zip basedir="${metrorex.gtfs.dir}" destfile="${gtfs-metrorex.zip}">
           <fileset dir="${metrorex.gtfs.dir}">
             <filename name="agency.txt"/>

@@ -1,6 +1,6 @@
 --- a/opentripplanner-webapp/js/otp/planner/Forms.js
 +++ b/opentripplanner-webapp/js/otp/planner/Forms.js
-@@ -52,6 +52,8 @@
+@@ -61,6 +61,8 @@
  
      m_date           : null,
      m_time           : null,
@@ -9,7 +9,7 @@
      m_arriveByStore     : null,
      m_arriveByForm      : null,
  
-@@ -183,9 +185,17 @@
+@@ -207,9 +209,17 @@
          this.hideErrorDialogs();
  
          // step 3: fix up some of the form values before sending onto the trip planner web service
@@ -28,7 +28,7 @@
          });
      },
  
-@@ -1133,15 +1143,26 @@
+@@ -1185,15 +1195,26 @@
       */
      makeDateTime : function()
      {
@@ -59,7 +59,7 @@
          });
  
          this.m_arriveByStore = otp.util.ExtUtils.makeStaticPullDownStore(this.locale.tripPlanner.arriveDepart);
-@@ -1165,15 +1186,17 @@
+@@ -1217,15 +1228,17 @@
                  selectOnFocus:  true
          });
  
@@ -81,7 +81,7 @@
          });
  
          var timePanel = {
-@@ -1193,7 +1216,7 @@
+@@ -1245,7 +1268,7 @@
                      columnWidth: 0.33,
                      layout: 'anchor',
                      border: false,
@@ -90,7 +90,7 @@
                  }
                  ,
                  {
-@@ -1201,7 +1224,7 @@
+@@ -1253,7 +1276,7 @@
                      layout: 'anchor',
                      border: false,
                      //labelWidth: 5,
@@ -101,7 +101,7 @@
          };
 --- a/opentripplanner-webapp/js/otp/planner/TripTab.js
 +++ b/opentripplanner-webapp/js/otp/planner/TripTab.js
-@@ -272,7 +272,7 @@
+@@ -289,7 +289,7 @@
  
          if(this.m_activeItinerary && this.m_activeItinerary.m_endTime)
          {
@@ -112,15 +112,15 @@
  
 --- a/opentripplanner-webapp/js/otp/planner/Templates.js
 +++ b/opentripplanner-webapp/js/otp/planner/Templates.js
-@@ -39,6 +39,7 @@
+@@ -44,6 +44,7 @@
      TP_WALK_LEG         : null,
      TP_CAR_LEG          : null,
  
 +    templateOptions     : null,
      tripFeedbackDetails : null,
      tripPrintTemplate   : null,
- 
-@@ -48,10 +49,23 @@
+     streetviewTemplate  : null, 
+@@ -54,10 +55,23 @@
          otp.planner.Templates.THIS   = this;
          otp.planner.Templates.locale = this.locale;
  
@@ -145,7 +145,7 @@
                    '<tpl if="numTransfers">',
                      '<br/><span class="transfers">',
                      '({numTransfers} ',
-@@ -60,7 +74,8 @@
+@@ -66,7 +80,8 @@
                      ', {duration} ' + this.getDurationTemplateString(),
                      ')</span>',
                    '</tpl>',
@@ -155,37 +155,42 @@
              ).compile();
  
          if(this.tripFeedbackDetails == null)
-@@ -80,11 +95,12 @@
-                 '<h1>' + this.locale.labels.trip_details + ':</h1>',
+@@ -100,11 +115,12 @@
                  '<table cellpadding="3" cellspacing="0" border="0">',
-                     '<tpl if="regularFare != null"><tr><td>' + this.locale.labels.fare + '</td><td>{regularFare}</td></tr></tpl>',
--                      '<tr><td>' + this.locale.labels.travel      + '</td><td>{startTimeDisplay}</td></tr>',
-+                      '<tr><td>' + this.locale.labels.travel      + '</td><td>{[this.dateTime(values.startTime)]}</td></tr>',
-                       '<tr><td>' + this.locale.labels.valid       + '</td><td>{[new Date().format("' + this.locale.time.format + '")]}</td></tr>',
-                       '<tr><td>' + this.locale.labels.trip_length + '</td><td>{duration} ' + this.getDurationTemplateString() + '</td></tr>',
-                     '<tpl if="walkDistance"><tr><td>{distanceVerb}</td><td>{walkDistance}</td></tr></tpl>',
+                     '<tpl if="regularFare != null">',
+                       '<tr><td><strong>' + this.locale.labels.fare        + '</strong></td><td>{regularFare}</td></tr></tpl>',
+-                      '<tr><td><strong>' + this.locale.labels.travel      + '</strong></td><td>{startTimeDisplay}</td></tr>',
++                      '<tr><td><strong>' + this.locale.labels.travel      + '</strong></td><td>{[this.dateTime(values.startTime)]}</td></tr>',
+                       '<tr><td><strong>' + this.locale.labels.valid       + '</strong></td><td>{[new Date().format("' + this.locale.time.format + '")]}</td></tr>',
+                       '<tr><td><strong>' + this.locale.labels.trip_length + '</strong></td><td>{duration} ' + this.getDurationTemplateString() + '</td></tr>',
+                       '<tpl if="walkDistance"><tr><td><strong>{distanceVerb}</strong></td><td>{walkDistance}</td></tr></tpl>',
 -                '</table></div>'
 +                '</table></div>',
 +                this.templateOptions
              ).compile();
  
-         if(this.TP_LEG_MODE == null)
-@@ -95,12 +111,12 @@
- 
+         if(this.HEADSIGN == null)
+@@ -130,17 +146,17 @@
          if(this.TP_LEG_BASE_STR == null)
              this.TP_LEG_BASE_STR = ''
--                + '<p><b>{startTimeDisplayShort}</b> ' + this.locale.instructions.depart + ' {fromName}'
-+                + '<p><b>{[this.time(values.startTime)]}</b> ' + this.locale.instructions.depart + ' {fromName}'
-                 + '<tpl if="headsign != null && headsign.length &gt; 0"> ({headsign})</tpl>'
-                 + '<tpl if="fromStopId != null && fromStopId.length &gt; 0 && showStopIds"><br/>' + this.locale.labels.stop_id + ' {fromStopId}</tpl>'
+                 + '<p class="leg-info">'
+-                + '<span class="time">{startTimeDisplayShort}</span> ' + this.locale.instructions.depart + ' {fromName}'
++                + '<span class="time">{[this.time(values.startTime)]}</span> ' + this.locale.instructions.depart + ' {fromName}'
+                 + '<tpl if="fromStopId != null && fromStopId.length &gt; 0 && showStopIds">'
+                 +   '<br/>'
+                 +   '<span class="stopid">' + this.locale.labels.stop_id + ' {fromStopId}</span>'
+                 + '</tpl>'
                  + '</p>'
-                 + '<tpl if="duration != null"><div class="duration">{duration} ' + this.getDurationTemplateString() + '</div></tpl>'
--                + '<p><b>{endTimeDisplayShort}</b> ' + this.locale.instructions.arrive + ' {toName}'
-+                + '<p><b>{[this.time(values.endTime)]}</b> ' + this.locale.instructions.arrive + ' {toName}'
-                 + '<tpl if="toStopId != null && toStopId.length &gt; 0 && showStopIds"><br/>' + this.locale.labels.stop_id + ' {toStopId}</tpl>'
-                 + '</p>'
-                 + '<tpl if="alerts != null && alerts.length &gt; 0">'
-@@ -160,7 +176,8 @@
+                 + '<tpl if="duration != null">'
+                 +   '<div class="duration">{duration} ' + this.getDurationTemplateString() + '</div>'
+                 + '</tpl>'
+                 + '<p class="leg-info">'
+-                + '<span class="time">{endTimeDisplayShort}</span> ' + this.locale.instructions.arrive + ' {toName}'
++                + '<span class="time">{[this.time(values.endTime)]}</span> ' + this.locale.instructions.arrive + ' {toName}'
+                 + '<tpl if="toStopId != null && toStopId.length &gt; 0 && showStopIds">'
+                 +   '<br/>'
+                 +   '<span class="stopid">' + this.locale.labels.stop_id + ' {toStopId}</span>'
+@@ -203,7 +219,8 @@
      getTransitLeg : function()
      {
          if (this.m_transitLeg == null)
@@ -195,7 +200,7 @@
  
          return this.m_transitLeg;
      },
-@@ -169,7 +186,8 @@
+@@ -212,7 +229,8 @@
      getInterlineLeg : function()
      {
          if (this.m_interlineLeg == null)
@@ -205,7 +210,7 @@
  
          return this.m_interlineLeg;
      },
-@@ -177,4 +195,4 @@
+@@ -238,4 +256,4 @@
      CLASS_NAME: "otp.planner.Templates"
  };
  

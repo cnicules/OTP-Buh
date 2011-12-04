@@ -5,6 +5,8 @@
   <property name="ratbtrob.dl.dir" value="${dl.dir}/ratbtrob"/>
   <property name="ratbtrob.build.dir" value="${build.dir}/ratbtrob"/>
   <property name="ratbtrob.gtfs.dir" value="${ratbtrob.build.dir}/gtfs"/>
+  <property name="ratbtrob.matches.dir"
+    value="${matches.build.dir}/RATB-trolleybus"/>
 
   <!-- result -->
   <property name="gtfs-ratbtrob.zip" value="${target.dir}/gtfs-ratbTrolleybus.zip"/>
@@ -522,10 +524,9 @@
     depends="ratbtrob-trips,ratbtrob-parse-stopseqs,ratbtrob-stops,compile-java">
     <property name="ratbtrob-stop-times.xml"
       value="${ratbtrob.build.dir}/ratbtrob-stop-times.xml"/>
+    <property name="ratbtrob-stop-matching-log.xml"
+      value="${ratbtrob.build.dir}/ratbtrob-stop-matching-log.xml"/>
     <sequential>
-      <local name="ratbtrob-stop-times.log"/>
-      <property name="ratbtrob-stop-times.log"
-        value="${ratbtrob.build.dir}/ratbtrob-stop-times.log"/>
       <outofdate>
         <targetfiles path="${ratbtrob-stop-times.xml}"/>
         <sourcefiles>
@@ -555,7 +556,7 @@
             <arg value="00:00:20"/>
             <arg value="00:02:40"/>
             <arg value="${ratbtrob-stop-times.xml}"/>
-            <arg value="${ratbtrob-stop-times.log}"/>
+            <arg value="${ratbtrob-stop-matching-log.xml}"/>
           </java>
           <echo>${ratbtrob-stop-times.xml}</echo>
         </sequential>
@@ -581,6 +582,85 @@
         </sequential>
       </outofdate>
     </sequential>
+  </target>
+
+  <target name="ratbtrob-stop-matches"
+    depends="ratbtrob-extract-list,ratbtrob-stop_times">
+    <property name="ratbtrob-stop-matching-log.html"
+      value="${ratbtrob.build.dir}/ratbtrob-stop-matching-log.html"/>
+    <sequential>
+      <local name="xmlLog-to-html.xslt"/>
+      <property name="xmlLog-to-html.xslt"
+        value="${base.dir}/src/main/xslt/xmlLog-to-html.xslt"/>
+      <outofdate>
+        <targetfiles path="${ratbtrob-stop-matching-log.html}"/>
+        <sourcefiles>
+          <pathelement path="${ratbtrob-freqs.xml}"/>
+          <pathelement path="${ratbtrob-routes.xml}"/>
+          <pathelement path="${ratbtrob-stopseqs.xml}"/>
+          <pathelement path="${ratbtrob-stop-matching-log.xml}"/>
+          <pathelement path="${xmlLog-to-html.xslt}"/>
+        </sourcefiles>
+        <sequential>
+          <local name="date_time"/>
+          <tstamp>
+            <format property="date_time" pattern="yyyy-MM-dd HH:mmZ"/>
+          </tstamp>
+          <xslt in="${ratbtrob-freqs.xml}"
+                out="${ratbtrob-stop-matching-log.html}"
+                style="${xmlLog-to-html.xslt}" force="true">
+            <param name="dateTime" expression="${date_time}"/>
+            <param name="agency" expression="RATB"/>
+            <param name="routeType" expression="trolleybus"/>
+            <param name="osmRoutesXml" expression="${ratbtrob-routes.xml}"/>
+            <param name="stopSeqsXml" expression="${ratbtrob-stopseqs.xml}"/>
+            <param name="logXml"
+                   expression="${ratbtrob-stop-matching-log.xml}"/>
+          </xslt>
+          <echo>${ratbtrob-stop-matching-log.html}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+
+    <property name="ratbtrob-matches-index.html"
+      value="${ratbtrob.matches.dir}/index.html"/>
+    <sequential>
+      <local name="xhtmlLogSplit-index.xslt"/>
+      <property name="xhtmlLogSplit-index.xslt"
+        value="${base.dir}/src/main/xslt/xhtmlLogSplit-index.xslt"/>
+      <outofdate>
+        <targetfiles path="${ratbtrob-matches-index.html}"/>
+        <sourcefiles>
+          <pathelement path="${ratbtrob-stop-matching-log.html}"/>
+          <pathelement path="${xhtmlLogSplit-index.xslt}"/>
+        </sourcefiles>
+        <sequential>
+          <mkdir dir="${ratbtrob.matches.dir}"/>
+          <xslt in="${ratbtrob-stop-matching-log.html}"
+                out="${ratbtrob-matches-index.html}"
+                style="${xhtmlLogSplit-index.xslt}"/>
+          <echo>${ratbtrob-matches-index.html}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>    
+
+    <for param="routeNr" list="${trob-numbers}" delimiter=" " trim="true">
+      <sequential>
+        <local name="routeMatches.html"/>
+        <property name="routeMatches.html"
+          value="${ratbtrob.matches.dir}/RATB-trolleybus-@{routeNr}.html"/>
+        <local name="xhtmlLogSplit-route.xslt"/>
+        <property name="xhtmlLogSplit-route.xslt"
+          value="${base.dir}/src/main/xslt/xhtmlLogSplit-route.xslt"/>
+        <xslt in="${ratbtrob-stop-matching-log.html}"
+              out="${routeMatches.html}"
+              style="${xhtmlLogSplit-route.xslt}">
+          <param name="agency" expression="RATB"/>
+          <param name="routeType" expression="trolleybus"/>
+          <param name="routeShortName" expression="@{routeNr}"/>
+        </xslt>
+      </sequential>
+    </for>
   </target>
 
   <target name="ratbtrob-agency">

@@ -16,12 +16,13 @@ Tested with:
 
   Apache Ant 1.8.0
     Ant-contrib 1.0b3
+    Apache Commons HttpClient 3.0.1
     Commons-logging 1.1.1
     Apache Commons Codec 1.5
 
   osmosis-0.39
   
-  OpenTripPlanner 0.4.2 2011-08-10
+  OpenTripPlanner 0.4.2 2011-10-30
   
 INSTALLATION
 
@@ -49,14 +50,24 @@ INSTALLATION
  * Or direct: Downloadable from http://ant-contrib.sourceforge.net/
  ** Copy ant-contrib-0.3.jar to ${ANT_HOME}/lib/
 
-0.2.3 Commons logging 1.1.1
+0.2.3 Commons HttpClient 3.x
+ * via apt: sudo apt-get install libcommons-httpclient-java 
+ ** cd /usr/share/ant/lib
+ ** sudo ln -s ../../java/commons-httpclient.jar
+ * Or direct: Downloadable from http://hc.apache.org/httpclient-3.x/
+ ** copy commons-httpclient-3.0.1.jar to ${ANT_HOME}/lib/
+
+0.2.4 Commons logging 1.1.1
  * (skip: Commons logging 1.8.0 already installed)
  * Or direct: Downloadable from 
    http://commons.apache.org/logging/download_logging.cgi
    (binary distribution is sufficient)
  ** Copy commons-logging-1.1.1.jar to ${ANT_HOME}/lib
 
-0.2.4 Commons Codec 1.5
+0.2.5 Commons Codec 1.5
+ * via apt: sudo apt-get install libcommons-codec-java
+ ** (may already be downloaded for httpclient, just need link)
+ ** sudo ln -s ../../java/commons-codec.jar
  * direct: Downloadable from
    http://commons.apache.org/codec/download_codec.cgi
    (binary distribution is sufficient)
@@ -85,8 +96,21 @@ INSTALLATION
  ** unzip otp.zip
  ** mv otp/graph-builder.xml otp/graph-builder.xml.original
  ** sudo mv otp /
- ** cp -uav /otp/webapps/*.war /var/lib/tomcat6/webapps/
 
+0.5 Tomcat 6.0
+ * Downloadable from 
+   http://tomcat.apache.org/
+
+0.5.1 Tomcat 6 server
+ * via apt: sudo apt-get install tomcat6
+ * install otp webapp files in the tomcat webapps folder.
+ ** sudo cp -uav /otp/webapps/*.war /var/lib/tomcat6/webapps/
+
+0.5.2 Tomcat 6 manager webapp (used to reload webapp without restarting server)
+ * via apt: sudo apt-get install tomcat6-admin
+ * install the tomcat catalina-ant.jar in the ant lib folder.
+ ** cd /usr/share/ant/lib
+ ** sudo ln -s /usr/share/tomcat6/lib/catalina-ant.jar 
 
 1. Unzip BucharestTripPlanner 
  - Unzip btp-YYYYMMDD-sources.zip, creating ~/btp/ directory
@@ -96,9 +120,10 @@ INSTALLATION
     otp.home.dir = /PATH-TO-INSTALL-DIR/otp
 
     # osm.sourceType for bucharest.osm
-    # 'whole' -- download whole country.osm.pbf then extract bucharest.osm
-    # 'parts' -- download parts of bucharest from api.bucharest.org and merge.
-    # 'copy'  -- copy bucharest.osm from bucharest.prepared.osm
+    # 'copy'      copy bucharest.osm from file at ${bucharest.prepared.osm}
+    # 'bugssy'    download bucharest.osm from osm.bugssy.net
+    # 'geofabrik' download region.osm.pbf from geofabrik, extract bucharest.osm
+    # 'osm-api'   download parts of bucharest from api.openstreetmap.org, merge
     osm.sourceType = copy
 
     # optional, for osm.sourceType copy
@@ -107,15 +132,23 @@ INSTALLATION
     # optional: if defined, merges src/main/osm fixes; 
     #           to skip fixes, comment it out.
     # osm.use-fixes = true
+
+    # tomcat
+    tomcat.webapps.dir: /PATH-TO-TOMCAT/webapps
+
+    # optional, for Tomcat manager to reload webapp/graph
+    tomcat.username: otp-buh
+    tomcat.password: 1PassC0de
 
   ** Example:
     osmosis.home.dir = /usr/local/share/osmosis-0.39
     otp.home.dir = /otp
 
     # osm.sourceType for bucharest.osm
-    # 'whole' -- download whole country.osm.pbf then extract bucharest.osm
-    # 'parts' -- download parts of bucharest from api.bucharest.org and merge.
-    # 'copy'  -- copy bucharest.osm from bucharest.prepared.osm
+    # 'copy'      copy bucharest.osm from file at ${bucharest.prepared.osm}
+    # 'bugssy'    download bucharest.osm from osm.bugssy.net
+    # 'geofabrik' download region.osm.pbf from geofabrik, extract bucharest.osm
+    # 'osm-api'   download parts of bucharest from api.openstreetmap.org, merge
     osm.sourceType = copy
 
     # optional, for osm.sourceType copy
@@ -124,6 +157,13 @@ INSTALLATION
     # optional: if defined, merges src/main/osm fixes; 
     #           to skip fixes, comment it out.
     # osm.use-fixes = true
+
+    # tomcat (for dir created with "tomcat6-instance-create /otp-buh-tomcat")
+    tomcat.webapps.dir: /otp-buh-tomcat/webapps
+
+    # optional, for Tomcat manager to reload webapp/graph
+    tomcat.username: otp-buh
+    tomcat.password: 1PassC0de
 
 3. (optional) To reuse previously downloaded schedule and map files,
    copy them to new directory:
@@ -201,4 +241,40 @@ INSTALLATION
      sudo patch -l -p 1 -i ~/btp/src/main/otp/p03-webapp-localeDateTime.patch
      sudo patch -l -p 1 -i ~/btp/src/main/otp/p04-webapp-englishIntlTime.patch
 
+   (If your version of the patch command is picky, the -l option may
+    not ignore the carriage-returns at the ends of some source lines.
+    In that case you may need to remove the carriage returns before
+    applying the patches.  One way is to use the gnu sed command:
+      cd opentripplanner-webapp
+      sudo sed -i 's/\r$//' index.html js/otp/planner/Forms.js js/otp/planner/TripTab.js js/otp/planner/Templates.js 
+      cd ..
+    Now apply the patches as above.)
+
 9. Restart OpenTripPlanner (see step 5).
+
+10. Edit Tomcat users to add otp-buh.
+    This is needed to restart webapp (to reload graph) via "ant otp-api-reload".
+  * file: 
+    TOMCAT_HOME/conf/tomcat-users.xml
+    /var/lib/tomcat6/conf/tomcat-users.xml
+  * Add user otp-buh with same password as in build.properties:
+    <tomcat-users>
+      ...
+      <user name="otp-buh" password="1PassC0de" roles="manager" />
+      ...
+    </tomcat-users>
+
+11. (optional, for development) If using Tomcat, create cron job to update map
+    periodically from downloaded data.
+    Command may be something like one of the following.
+    Overwrite same build.log:
+     cd /home/uname/btp; ./ant.sh -logfile build.log build-reload
+    Or write log named with datetime, build-YYYY-MM-DD-HHMM.log:
+     cd /home/uname/btp; ./ant.sh -logfile build-`date +\%F-\%H\%M`.log build-reload
+
+12. (optional, for development) If using Tomcat, create stops-matched pages
+    from stop name matching log.
+      ant stops-matched
+    Deploys pages in a warfile (web archive file) to ${tomcat.webapps.dir}.
+    If Tomcat is running it will automatically delete old directory
+    and unpack warfile of new files.  URL path is "/stops-matched/index.html".

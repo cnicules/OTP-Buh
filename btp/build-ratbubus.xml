@@ -6,6 +6,8 @@
   <property name="ratbubus.dl.dir" value="${dl.dir}/ratbubus"/>
   <property name="ratbubus.build.dir" value="${build.dir}/ratbubus"/>
   <property name="ratbubus.gtfs.dir" value="${ratbubus.build.dir}/gtfs"/>
+  <property name="ratbubus.matches.dir"
+    value="${matches.build.dir}/RATB-urbanbus"/>
 
   <!-- result -->
   <property name="gtfs-ratbubus.zip" value="${target.dir}/gtfs-ratbUrbanbus.zip"/>
@@ -523,10 +525,9 @@
     depends="ratbubus-trips,ratbubus-parse-stopseqs,ratbubus-stops,compile-java">
     <property name="ratbubus-stop-times.xml"
       value="${ratbubus.build.dir}/ratbubus-stop-times.xml"/>
+    <property name="ratbubus-stop-matching-log.xml"
+      value="${ratbubus.build.dir}/ratbubus-stop-matching-log.xml"/>
     <sequential>
-      <local name="ratbubus-stop-times.log"/>
-      <property name="ratbubus-stop-times.log"
-        value="${ratbubus.build.dir}/ratbubus-stop-times.log"/>
       <outofdate>
         <targetfiles path="${ratbubus-stop-times.xml}"/>
         <sourcefiles>
@@ -556,7 +557,7 @@
             <arg value="00:00:20"/>
             <arg value="00:02:40"/>
             <arg value="${ratbubus-stop-times.xml}"/>
-            <arg value="${ratbubus-stop-times.log}"/>
+            <arg value="${ratbubus-stop-matching-log.xml}"/>
           </java>
           <echo>${ratbubus-stop-times.xml}</echo>
         </sequential>
@@ -582,6 +583,85 @@
         </sequential>
       </outofdate>
     </sequential>
+  </target>
+
+  <target name="ratbubus-stop-matches"
+    depends="ratbubus-extract-list,ratbubus-stop_times">
+    <property name="ratbubus-stop-matching-log.html"
+      value="${ratbubus.build.dir}/ratbubus-stop-matching-log.html"/>
+    <sequential>
+      <local name="xmlLog-to-html.xslt"/>
+      <property name="xmlLog-to-html.xslt"
+        value="${base.dir}/src/main/xslt/xmlLog-to-html.xslt"/>
+      <outofdate>
+        <targetfiles path="${ratbubus-stop-matching-log.html}"/>
+        <sourcefiles>
+          <pathelement path="${ratbubus-freqs.xml}"/>
+          <pathelement path="${ratbubus-routes.xml}"/>
+          <pathelement path="${ratbubus-stopseqs.xml}"/>
+          <pathelement path="${ratbubus-stop-matching-log.xml}"/>
+          <pathelement path="${xmlLog-to-html.xslt}"/>
+        </sourcefiles>
+        <sequential>
+          <local name="date_time"/>
+          <tstamp>
+            <format property="date_time" pattern="yyyy-MM-dd HH:mmZ"/>
+          </tstamp>
+          <xslt in="${ratbubus-freqs.xml}"
+                out="${ratbubus-stop-matching-log.html}"
+                style="${xmlLog-to-html.xslt}" force="true">
+            <param name="dateTime" expression="${date_time}"/>
+            <param name="agency" expression="RATB"/>
+            <param name="routeType" expression="urbanbus"/>
+            <param name="osmRoutesXml" expression="${ratbubus-routes.xml}"/>
+            <param name="stopSeqsXml" expression="${ratbubus-stopseqs.xml}"/>
+            <param name="logXml"
+                   expression="${ratbubus-stop-matching-log.xml}"/>
+          </xslt>
+          <echo>${ratbubus-stop-matching-log.html}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>
+
+    <property name="ratbubus-matches-index.html"
+      value="${ratbubus.matches.dir}/index.html"/>
+    <sequential>
+      <local name="xhtmlLogSplit-index.xslt"/>
+      <property name="xhtmlLogSplit-index.xslt"
+        value="${base.dir}/src/main/xslt/xhtmlLogSplit-index.xslt"/>
+      <outofdate>
+        <targetfiles path="${ratbubus-matches-index.html}"/>
+        <sourcefiles>
+          <pathelement path="${ratbubus-stop-matching-log.html}"/>
+          <pathelement path="${xhtmlLogSplit-index.xslt}"/>
+        </sourcefiles>
+        <sequential>
+          <mkdir dir="${ratbubus.matches.dir}"/>
+          <xslt in="${ratbubus-stop-matching-log.html}"
+                out="${ratbubus-matches-index.html}"
+                style="${xhtmlLogSplit-index.xslt}"/>
+          <echo>${ratbubus-matches-index.html}</echo>
+        </sequential>
+      </outofdate>
+    </sequential>    
+
+    <for param="routeNr" list="${ubus-numbers}" delimiter=" " trim="true">
+      <sequential>
+        <local name="routeMatches.html"/>
+        <property name="routeMatches.html"
+          value="${ratbubus.matches.dir}/RATB-urbanbus-@{routeNr}.html"/>
+        <local name="xhtmlLogSplit-route.xslt"/>
+        <property name="xhtmlLogSplit-route.xslt"
+          value="${base.dir}/src/main/xslt/xhtmlLogSplit-route.xslt"/>
+        <xslt in="${ratbubus-stop-matching-log.html}"
+              out="${routeMatches.html}"
+              style="${xhtmlLogSplit-route.xslt}">
+          <param name="agency" expression="RATB"/>
+          <param name="routeType" expression="urbanbus"/>
+          <param name="routeShortName" expression="@{routeNr}"/>
+        </xslt>
+      </sequential>
+    </for>
   </target>
 
   <target name="ratbubus-agency">

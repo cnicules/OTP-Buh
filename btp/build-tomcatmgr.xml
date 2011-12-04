@@ -1,0 +1,51 @@
+<project name="btp-tomcat6" default="otp-api-reload" basedir=".">
+
+  <!-- Configure the context path for this application -->
+  <property name="otp-api.path"     value="/opentripplanner-api-webapp"/>
+
+  <!-- Configure properties to access the Manager application -->
+  <property name="manager.url"      value="http://localhost:8080/manager"/>
+
+  <!-- Configure the custom Ant tasks for the Manager application -->
+  <taskdef name="deploy"    classname="org.apache.catalina.ant.DeployTask"/>
+  <taskdef name="list"      classname="org.apache.catalina.ant.ListTask"/>
+  <taskdef name="reload"    classname="org.apache.catalina.ant.ReloadTask"/>
+  <taskdef name="resources" classname="org.apache.catalina.ant.ResourcesTask"/>
+  <taskdef name="roles"     classname="org.apache.catalina.ant.RolesTask"/>
+  <taskdef name="start"     classname="org.apache.catalina.ant.StartTask"/>
+  <taskdef name="stop"      classname="org.apache.catalina.ant.StopTask"/>
+  <taskdef name="undeploy"  classname="org.apache.catalina.ant.UndeployTask"/>
+
+  <!-- Executable Targets -->
+  <target name="otp-api-start" description="Start opentripplanner-api-webapp"
+    depends="check-tomcat-properties">
+    <start url="${manager.url}" path="${otp-api.path}"
+           username="${tomcat.username}" password="${tomcat.password}"/>
+  </target>
+
+  <target name="otp-api-reload" description="Reload web application"
+    depends="check-tomcat-properties">
+    <reload url="${manager.url}" path="${otp-api.path}"
+            username="${tomcat.username}" password="${tomcat.password}"/>
+  </target>
+
+  <target name="otp-api-stop" description="Stop opentripplanner-api-webapp"
+    depends="check-tomcat-properties">
+    <stop url="${manager.url}" path="${otp-api.path}"
+          username="${tomcat.username}" password="${tomcat.password}"/>
+  </target>
+
+  <target name="check-tomcat-properties">
+    <fail unless="tomcat.username"
+      message="Missing tomcat.username property. &#xA;
+        Please define tomcat.username = otp-buh &#xA;
+        in the ${base.dir}/build.properties file. &#xA;
+        It should match the tomcat-users entry."/>
+    <fail unless="tomcat.password"
+      message="Missing tomcat.password property. &#xA;
+        Please define tomcat.password = 1PassC0de &#xA;
+        in the ${base.dir}/build.properties file. &#xA;
+        It should match the tomcat-users entry."/>
+  </target>
+
+</project>

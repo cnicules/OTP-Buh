@@ -49,6 +49,9 @@
     <xsl:text>&#xA;</xsl:text>
     <frequencies>
       <xsl:for-each select="./filepath">
+        <!-- sort frequencies by route: route is 1st difference in filename -->
+        <xsl:sort select="string(.)"/>
+
         <xsl:variable name="path" select="string(.)"/>
         <xsl:variable name="tbody"
           select="document($path)/html/body/table/tbody"/>

@@ -1,6 +1,6 @@
 --- a/opentripplanner-webapp/index.html
 +++ b/opentripplanner-webapp/index.html
-@@ -93,6 +93,8 @@
+@@ -95,6 +95,8 @@
       ['10000',  '10 km'],
       ['20000',  '20 km']
      ];

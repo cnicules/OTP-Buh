@@ -1,0 +1,81 @@
+<project name="btp-stops-matched" default="build" basedir=".">
+  <!-- This file is imported by build.xml. -->
+
+  <property name="stops-matched.war" value="stops-matched.war"/>
+
+  <target name="stops-matched-overview"
+    depends="metrorex-stop-matches,ratbtram-stop-matches,ratbtrob-stop-matches,ratbubus-stop-matches">
+    
+    <local name="overview.html"/>
+    <property name="overview.html"
+	      value="${matches.build.dir}/index.html"/>
+    <local name="overview-skeleton.html"/>
+    <property name="overview-skeleton.xhtml"
+	      value="src/main/xml/stops-matched-overview-skeleton.xhtml"/>
+    <local name="xmllogs-to-merged-overview.xslt"/>
+    <property name="xhtmlLogs-to-merged-overview.xslt"
+	      value="src/main/xslt/xhtmlLogs-to-merged-overview.xslt"/>
+    <outofdate>
+      <targetfiles path="${overview.html}"/>
+      <sourcefiles>
+	<pathelement path="${overview-skeleton.xhtml}"/>
+	<pathelement path="${metrorex-stop-matching-log.html}"/>
+	<pathelement path="${ratbtram-stop-matching-log.html}"/>
+	<pathelement path="${ratbtrob-stop-matching-log.html}"/>
+	<pathelement path="${ratbubus-stop-matching-log.html}"/>
+	<pathelement path="${xhtmlLogs-to-merged-overview.xslt}"/>
+      </sourcefiles>
+      <sequential>
+	<xslt in="${overview-skeleton.xhtml}"
+	      out="${overview.html}"
+	      style="${xhtmlLogs-to-merged-overview.xslt}" force="true">
+	  <param name="metrorexLogXhtml"
+		 expression="${metrorex-stop-matching-log.html}"/>
+	  <param name="ratbtramLogXhtml"
+		 expression="${ratbtram-stop-matching-log.html}"/>
+	  <param name="ratbtrobLogXhtml"
+		 expression="${ratbtrob-stop-matching-log.html}"/>
+	  <param name="ratbubusLogXhtml"
+		 expression="${ratbubus-stop-matching-log.html}"/>
+	</xslt>
+        <echo>${overview.html}</echo>
+      </sequential>
+    </outofdate>
+
+  </target>
+
+  <target name="stops-matched-warfile"
+	  depends="stops-matched-overview">
+    <war destfile="${target.dir}/${stops-matched.war}"
+	 webxml="src/main/xml/stops-matched-web.xml"
+	 basedir="${matches.build.dir}"/>
+    <echo>${target.dir}/${stops-matched.war}</echo>
+  </target>
+
+  <target name="check-webapps-dir">
+    <antcall target="check-dir-property">
+      <param name="program.name" value="Tomcat"/>
+      <param name="property.name" value="tomcat.webapps.dir"/>
+      <param name="property.value" value="${tomcat.webapps.dir}"/>
+      <param name="sample.value" value="/PATH-TO-TOMCAT-DIR/webapps"/>
+    </antcall>
+  </target>
+
+  <target name="stops-matched"
+	  depends="check-webapps-dir,stops-matched-warfile"
+    description="Format transit-stop sched/map names matched; to Tomcat">
+    <copy file="${target.dir}/${stops-matched.war}"
+	  todir="${tomcat.webapps.dir}"/>
+    <echo>Deployed to URL path: /stops-matched/index.html</echo>
+  </target>
+
+  <target name="stops-matched-undeploy" depends="check-webapps-dir">
+    <delete file="${tomcat.webapps.dir}/${stops-matched.war}" quiet="true"/>
+  </target>
+
+  <target name="stops-matched-clean">
+    <delete dir="${matches.build.dir}" quiet="true"/>
+    <delete file="${target.dir}/${stops-matched.war}" quiet="true"/>
+  </target>
+
+</project>

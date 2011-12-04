@@ -60,6 +60,9 @@
           <xsl:attribute name="route_short_name">
             <xsl:value-of select="tag[@k='ref']/@v"/>
           </xsl:attribute>
+          <xsl:attribute name="route_id">
+            <xsl:value-of select="@id"/>
+          </xsl:attribute>          
 
           <!-- stops -->
           <xsl:for-each select="member">

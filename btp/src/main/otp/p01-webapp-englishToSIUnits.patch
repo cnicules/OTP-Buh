@@ -1,6 +1,7 @@
 --- a/opentripplanner-webapp/index.html
 +++ b/opentripplanner-webapp/index.html
-@@ -78,5 +78,22 @@
+@@ -80,6 +80,23 @@
+     <script src="js/otp/systemmap/Popup.js"></script>
      <script src="js/otp/application/Attribution.js"></script>
      <script src="js/otp/application/Controller.js"></script>
 +    <script>

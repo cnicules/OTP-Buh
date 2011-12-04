@@ -1,6 +1,6 @@
 --- a/opentripplanner-webapp/index.html
 +++ b/opentripplanner-webapp/index.html
-@@ -95,6 +95,13 @@
+@@ -98,6 +98,13 @@
  }());
  </script>
      <script src="js/otp/config.js"></script>
